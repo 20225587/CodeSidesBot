@@ -4,26 +4,39 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.Math.*;
+
 public class MyStrategy {
 
     Unit me;
     Game game;
+    MyDebug debug;
 
-    public UnitAction getAction(Unit me, Game game, Debug debug) {
+    public UnitAction getAction(Unit me, Game game, Debug debug0) {
         this.me = me;
         this.game = game;
+        this.debug = new MyDebug(debug0);
+
+        //-------
+
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus();
         Vec2Double targetPos = chooseTarget(enemy, targetBonus);
         Vec2Double aimDir = aim(enemy);
         boolean jump = shouldJump(targetPos);
         double velocity = getVelocity(targetPos);
+
+        Point to = new Point(me).add(Point.dir(PI / 4).mult(100));
+
+        debug.drawLine(me, to);
+
         return new UnitAction(velocity, jump, !jump, aimDir, true, false, false);
     }
 
+
     private double getVelocity(Vec2Double targetPos) {
         double myX = me.getPosition().getX();
-        if (Math.abs(myX - targetPos.getX()) <= me.getSize().getX() / 8) {
+        if (abs(myX - targetPos.getX()) <= me.getSize().getX() / 8) {
             return 0;
         }
         return (targetPos.getX() > myX) ?
@@ -91,5 +104,54 @@ public class MyStrategy {
 
     static double sqrDist(Vec2Double a, Vec2Double b) {
         return (a.getX() - b.getX()) * (a.getX() - b.getX()) + (a.getY() - b.getY()) * (a.getY() - b.getY());
+    }
+
+    static class Point {
+        public final double x, y;
+
+        Point(double x, double y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public Point(Unit unit) {
+            this(unit.getPosition());
+        }
+
+        public Point(Vec2Double p) {
+            this(p.getX(), p.getY());
+        }
+
+        public static Point dir(double a) {
+            return new Point(cos(a), sin(a));
+        }
+
+        Point add(Point p) {
+            return new Point(x + p.x, y + p.y);
+        }
+
+        Vec2Float toV2F() {
+            return new Vec2Float((float) x, (float) y);
+        }
+
+        public Point mult(int v) {
+            return new Point(x * v, y * v);
+        }
+    }
+
+    static class MyDebug {
+        final Debug debug;
+
+        MyDebug(Debug debug) {
+            this.debug = debug;
+        }
+
+        private void drawLine(Unit a, Point b) {
+            drawLine(new Point(a), b);
+        }
+
+        private void drawLine(Point a, Point b) {
+            debug.draw(new CustomData.Line(a.toV2F(), b.toV2F(), 0.1f, new ColorFloat(0f, 0f, 0f, 0.9f)));
+        }
     }
 }
