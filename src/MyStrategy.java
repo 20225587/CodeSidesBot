@@ -25,12 +25,48 @@ public class MyStrategy {
         Vec2Double aimDir = aim(enemy);
         boolean jump = shouldJump(targetPos);
         double velocity = getVelocity(targetPos);
+        boolean shoot = shouldShoot(enemy);
 
-        Point to = new Point(me).add(Point.dir(PI / 4).mult(100));
+        debug.showSpread(me);
+        if (shoot) {
+            debug0.draw(new CustomData.Log("shoot"));
+        }
 
-        debug.drawLine(me, to);
+        return new UnitAction(velocity, jump, !jump, aimDir, shoot, false, false);
+    }
 
-        return new UnitAction(velocity, jump, !jump, aimDir, true, false, false);
+    private boolean shouldShoot(Unit enemy) {
+        if (me.getWeapon() == null) {
+            return false;
+        }
+        double d = dist(me, enemy);
+        double r = max(enemy.getSize().getX(), enemy.getSize().getY()) / 2;
+        double angle = atan(r / d);
+        return me.getWeapon().getSpread() <= angle;
+    }
+
+    private double dist(Point a, Unit b) {
+        return dist(a.x, a.y, b.getPosition().getX(), b.getPosition().getY());
+    }
+
+    private double dist(Unit me, Unit enemy) {
+        return dist(me.getPosition(), enemy.getPosition());
+    }
+
+    private double dist(Vec2Double a, Vec2Double b) {
+        return dist(a.getX(), a.getY(), b.getX(), b.getY());
+    }
+
+    private double dist(double x1, double y1, double x2, double y2) {
+        return sqrt((sqr(x1 - x2) + sqr(y1 - y2)));
+    }
+
+    private double sqr(double x) {
+        return x * x;
+    }
+
+    private static Point muzzlePoint(Unit unit) {
+        return new Point(unit).add(new Point(0, unit.getSize().getY() / 2));
     }
 
 
@@ -152,6 +188,25 @@ public class MyStrategy {
 
         private void drawLine(Point a, Point b) {
             debug.draw(new CustomData.Line(a.toV2F(), b.toV2F(), 0.1f, new ColorFloat(0f, 0f, 0f, 0.9f)));
+        }
+
+        private void showSpread(Unit me) {
+            Weapon weapon = me.getWeapon();
+            if (weapon != null) {
+                double curDir = weapon.getLastAngle();
+                Point muzzle = muzzlePoint(me);
+
+                showSpread(curDir, muzzle, weapon.getSpread());
+                showSpread(curDir, muzzle, weapon.getParams().getMinSpread());
+            }
+        }
+
+        private void showSpread(double curDir, Point muzzle, double spread) {
+            Point to1 = muzzle.add(Point.dir(curDir + spread).mult(100));
+            Point to2 = muzzle.add(Point.dir(curDir - spread).mult(100));
+
+            drawLine(muzzle, to1);
+            drawLine(muzzle, to2);
         }
     }
 }
