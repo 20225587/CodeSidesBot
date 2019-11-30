@@ -5,17 +5,23 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.*;
+import static model.Tile.*;
 
 public class MyStrategy {
 
     Unit me;
     Game game;
     MyDebug debug;
+    Tile[][] map;
+    public static final ColorFloat BLACK = new ColorFloat(0, 0, 0, 1);
+    public static final ColorFloat RED = new ColorFloat(1, 0, 0, 1);
+    public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
 
     public UnitAction getAction(Unit me, Game game, Debug debug0) {
         this.me = me;
         this.game = game;
         this.debug = new MyDebug(debug0);
+        this.map = game.getLevel().getTiles();
 
         //-------
 
@@ -36,13 +42,47 @@ public class MyStrategy {
     }
 
     private boolean shouldShoot(Unit enemy) {
-        if (me.getWeapon() == null) {
+        Weapon weapon = me.getWeapon();
+        if (weapon == null) {
             return false;
+        }
+        return inLineOfSight(enemy) && goodSpread(enemy, weapon);
+    }
+
+    private boolean inLineOfSight(Unit enemy) {
+        Point a = muzzlePoint(me);
+        Point b = muzzlePoint(enemy);
+        boolean blocked = false;
+        int n = 1000;
+        Point delta = b.minus(a).mult(1.0 / n);
+        for (int i = 0; i < n; i++) {
+            Point t = a.add(delta.mult(i));
+            if (inWall(t)) {
+                blocked = true;
+                debug.drawSquare(t, 0.1, RED);
+            } else {
+                debug.drawSquare(t, 0.1, WHITE);
+            }
+        }
+        return !blocked;
+    }
+
+    private boolean inWall(Point t) {
+        return map[(int) t.x][(int) t.y] == WALL;
+    }
+
+    private boolean goodSpread(Unit enemy, Weapon weapon) { // todo rework
+        if (true) {
+            return true;
+        }
+        double spread = weapon.getSpread();
+        if (abs(spread - weapon.getParams().getMinSpread()) < 1e-5) {
+            return true;
         }
         double d = dist(me, enemy);
         double r = max(enemy.getSize().getX(), enemy.getSize().getY()) / 2;
         double angle = atan(r / d);
-        return me.getWeapon().getSpread() <= angle;
+        return spread <= angle;
     }
 
     private double dist(Point a, Unit b) {
@@ -83,11 +123,11 @@ public class MyStrategy {
     private boolean shouldJump(Vec2Double targetPos) {
         boolean jump = targetPos.getY() > me.getPosition().getY();
         if (targetPos.getX() > me.getPosition().getX() && game.getLevel()
-                .getTiles()[(int) (me.getPosition().getX() + 1)][(int) (me.getPosition().getY())] == Tile.WALL) {
+                .getTiles()[(int) (me.getPosition().getX() + 1)][(int) (me.getPosition().getY())] == WALL) {
             jump = true;
         }
         if (targetPos.getX() < me.getPosition().getX() && game.getLevel()
-                .getTiles()[(int) (me.getPosition().getX() - 1)][(int) (me.getPosition().getY())] == Tile.WALL) {
+                .getTiles()[(int) (me.getPosition().getX() - 1)][(int) (me.getPosition().getY())] == WALL) {
             jump = true;
         }
         return jump;
@@ -170,8 +210,12 @@ public class MyStrategy {
             return new Vec2Float((float) x, (float) y);
         }
 
-        public Point mult(int v) {
+        public Point mult(double v) {
             return new Point(x * v, y * v);
+        }
+
+        public Point minus(Point a) {
+            return new Point(x - a.x, y - a.y);
         }
     }
 
@@ -207,6 +251,12 @@ public class MyStrategy {
 
             drawLine(muzzle, to1);
             drawLine(muzzle, to2);
+        }
+
+        public void drawSquare(Point p, double size, ColorFloat color) {
+            Vec2Float pos = p.add(new Point(-size / 2, -size / 2)).toV2F();
+            Vec2Float sizeV = new Vec2Float((float) size, (float) size);
+            debug.draw(new CustomData.Rect(pos, sizeV, color));
         }
     }
 }
