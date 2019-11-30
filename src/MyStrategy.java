@@ -57,7 +57,7 @@ public class MyStrategy {
         Point delta = b.minus(a).mult(1.0 / n);
         for (int i = 0; i < n; i++) {
             Point t = a.add(delta.mult(i));
-            if (inWall(t)) {
+            if (tileAtPoint(t) == WALL) {
                 blocked = true;
                 debug.drawSquare(t, 0.1, RED);
             } else {
@@ -67,8 +67,12 @@ public class MyStrategy {
         return !blocked;
     }
 
-    private boolean inWall(Point t) {
-        return map[(int) t.x][(int) t.y] == WALL;
+    private Tile tileAtPoint(Point p) {
+        return tileAtPoint(p.x, p.y);
+    }
+
+    private Tile tileAtPoint(double x, double y) {
+        return map[(int) x][(int) y];
     }
 
     private boolean goodSpread(Unit enemy, Weapon weapon) { // todo rework
@@ -121,13 +125,16 @@ public class MyStrategy {
     }
 
     private boolean shouldJump(Vec2Double targetPos) {
-        boolean jump = targetPos.getY() > me.getPosition().getY();
-        if (targetPos.getX() > me.getPosition().getX() && game.getLevel()
-                .getTiles()[(int) (me.getPosition().getX() + 1)][(int) (me.getPosition().getY())] == WALL) {
+        double myY = me.getPosition().getY();
+        double myX = me.getPosition().getX();
+        double targetY = targetPos.getY();
+        double targetX = targetPos.getX();
+
+        boolean jump = targetY > myY;
+        if (targetX > myX && tileAtPoint(myX + 1, myY) == WALL) {
             jump = true;
         }
-        if (targetPos.getX() < me.getPosition().getX() && game.getLevel()
-                .getTiles()[(int) (me.getPosition().getX() - 1)][(int) (me.getPosition().getY())] == WALL) {
+        if (targetX < myX && tileAtPoint(myX - 1, myY) == WALL) {
             jump = true;
         }
         return jump;
