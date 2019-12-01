@@ -33,7 +33,7 @@ public class MyStrategy {
         boolean shoot = shouldShoot(enemy);
 
         return new UnitAction(
-                moveAction.velocity,
+                toApiSpeed(moveAction.velocity),
                 moveAction.jump,
                 moveAction.jumpDown,
                 aimDir,
@@ -43,8 +43,8 @@ public class MyStrategy {
         );
     }
 
-    double transformSpeed(double desiredSpeed) {
-        return desiredSpeed * 60;
+    double toApiSpeed(double speed) {
+        return speed * 60;
     }
 
     private MoveAction move(Unit enemy, LootBox targetBonus) {
@@ -187,7 +187,7 @@ public class MyStrategy {
 
 
     private double getVelocity(Point targetPos) {
-        return transformSpeed(targetPos.x - me.getPosition().getX());
+        return targetPos.x - me.getPosition().getX();
     }
 
     private Vec2Double aim(Unit enemy) {
