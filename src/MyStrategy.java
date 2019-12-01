@@ -70,6 +70,10 @@ public class MyStrategy {
             if (targetPos.x < myX && tileAtPoint(myX - 1, myY) == WALL) {
                 jump = true;
             }
+            int platform = findPlatformAboveFloor();
+            if (jump && platform != -1 && !enoughTimeToGetTo(platform)) {
+                jump = false;
+            }
             boolean jumpDown;
             if (jump) {
                 jumpDown = false;
@@ -78,6 +82,23 @@ public class MyStrategy {
             }
             return new MoveAction(getVelocity(targetPos), jump, jumpDown);
         }
+    }
+
+    private boolean enoughTimeToGetTo(int platformFloor) {
+        double curY = me.getPosition().getY();
+        double remainingHeight = me.getJumpState().getSpeed() * me.getJumpState().getMaxTime();
+        return (int) (curY + remainingHeight) >= platformFloor + 1;
+    }
+
+    private int findPlatformAboveFloor() {
+        int x = (int) me.getPosition().getX();
+        int y = (int) me.getPosition().getY();
+        for (int j = y; j < map[0].length; j++) {
+            if (map[x][j] == PLATFORM) {
+                return j;
+            }
+        }
+        return -1;
     }
 
     private boolean shouldShoot(Unit enemy) {
