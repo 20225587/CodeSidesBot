@@ -65,10 +65,10 @@ public class MyStrategy {
             double myX = me.getPosition().getX();
 
             boolean jump = targetPos.y > myY;
-            if (targetPos.x > myX && tileAtPoint(myX + 1, myY) == WALL) {
+            if ((int) targetPos.x > (int) myX && tileAtPoint(myX + 1, myY) == WALL) {
                 jump = true;
             }
-            if (targetPos.x < myX && tileAtPoint(myX - 1, myY) == WALL) {
+            if ((int) targetPos.x < (int) myX && tileAtPoint(myX - 1, myY) == WALL) {
                 jump = true;
             }
             int platform = findPlatformAboveFloor();
