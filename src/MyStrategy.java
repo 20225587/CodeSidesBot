@@ -15,6 +15,7 @@ public class MyStrategy {
     Tile[][] map;
     public static final ColorFloat BLACK = new ColorFloat(0, 0, 0, 1);
     public static final ColorFloat RED = new ColorFloat(1, 0, 0, 1);
+    public static final ColorFloat GREEN = new ColorFloat(0, 1, 0, 1);
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
 
     public UnitAction getAction(Unit me, Game game, Debug debug0) {
@@ -42,6 +43,10 @@ public class MyStrategy {
         );
     }
 
+    double transformSpeed(double desiredSpeed) {
+        return desiredSpeed * 60;
+    }
+
     private MoveAction move(Unit enemy, LootBox targetBonus) {
         Point targetPos = null;
         if (targetBonus != null && targetBonus.getItem() instanceof Item.HealthPack) {
@@ -54,6 +59,7 @@ public class MyStrategy {
         if (targetPos == null) {
             return new MoveAction(0, true, false);
         } else {
+            debug.drawLine(new Point(me), targetPos, GREEN);
             double myY = me.getPosition().getY();
             double myX = me.getPosition().getX();
 
@@ -160,13 +166,7 @@ public class MyStrategy {
 
 
     private double getVelocity(Point targetPos) {
-        double myX = me.getPosition().getX();
-        if (abs(myX - targetPos.x) <= me.getSize().getX() / 8) {
-            return 0;
-        }
-        return (targetPos.x > myX) ?
-                game.getProperties().getUnitMaxHorizontalSpeed() :
-                -game.getProperties().getUnitMaxHorizontalSpeed();
+        return transformSpeed(targetPos.x - me.getPosition().getX());
     }
 
     private Vec2Double aim(Unit enemy) {
@@ -274,7 +274,11 @@ public class MyStrategy {
         }
 
         private void drawLine(Point a, Point b) {
-            debug.draw(new CustomData.Line(a.toV2F(), b.toV2F(), 0.1f, new ColorFloat(0f, 0f, 0f, 0.9f)));
+            drawLine(a, b, new ColorFloat(0f, 0f, 0f, 0.9f));
+        }
+
+        private void drawLine(Point a, Point b, ColorFloat color) {
+            debug.draw(new CustomData.Line(a.toV2F(), b.toV2F(), 0.1f, color));
         }
 
         private void showSpread(Unit me) {
