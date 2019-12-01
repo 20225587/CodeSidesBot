@@ -26,14 +26,14 @@ public class MyStrategy {
         //-------
 
         Unit enemy = chooseEnemy();
-        LootBox targetBonus = chooseTargetBonus();
+        LootBox targetBonus = chooseTargetBonus(enemy);
         Vec2Double targetPos = chooseTarget(enemy, targetBonus);
         Vec2Double aimDir = aim(enemy);
         boolean jump = shouldJump(targetPos);
         double velocity = getVelocity(targetPos);
         boolean shoot = shouldShoot(enemy);
 
-        debug.showSpread(me);
+        //debug.showSpread(me);
         if (shoot) {
             debug0.draw(new CustomData.Log("shoot"));
         }
@@ -105,6 +105,10 @@ public class MyStrategy {
         return sqrt((sqr(x1 - x2) + sqr(y1 - y2)));
     }
 
+    private double dist(Vec2Double a, Unit b) {
+        return dist(a.getX(), a.getY(), b.getPosition().getX(), b.getPosition().getY());
+    }
+
     private double sqr(double x) {
         return x * x;
     }
@@ -159,16 +163,35 @@ public class MyStrategy {
         return targetPos;
     }
 
-    private LootBox chooseTargetBonus() {
+    private LootBox chooseTargetBonus(Unit enemy) {
         Map<Class<? extends Item>, List<LootBox>> map = Stream.of(game.getLootBoxes())
                 .collect(Collectors.groupingBy(b -> b.getItem().getClass()));
         List<LootBox> weapons = map.getOrDefault(Item.Weapon.class, Collections.emptyList());
         List<LootBox> healthPacks = map.getOrDefault(Item.HealthPack.class, Collections.emptyList());
         List<LootBox> mines = map.getOrDefault(Item.Mine.class, Collections.emptyList());
 
-        List<LootBox> required = me.getWeapon() == null ? weapons : healthPacks;
-        return required.stream()
-                .min(Comparator.comparing(lb -> sqrDist(lb.getPosition(), me.getPosition())))
+        if (me.getWeapon() == null) {
+            return chooseWeapon(weapons);
+        } else {
+            return chooseHealthPack(healthPacks, enemy);
+        }
+    }
+
+    private LootBox chooseHealthPack(List<LootBox> healthPacks, Unit enemy) {
+        double centerX = map.length / 2.0;
+        return healthPacks.stream()
+                .min(
+                        Comparator
+                                .comparing((LootBox h) -> dist(h.getPosition(), me) > dist(h.getPosition(), enemy))
+                                .thenComparing(h -> abs(h.getPosition().getX() - centerX))
+                                .thenComparing(h -> dist(h.getPosition(), me.getPosition()))
+                )
+                .orElse(null);
+    }
+
+    private LootBox chooseWeapon(List<LootBox> weapons) {
+        return weapons.stream()
+                .min(Comparator.comparing(w -> dist(w.getPosition(), me.getPosition())))
                 .orElse(null);
     }
 
