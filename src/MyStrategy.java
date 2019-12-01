@@ -1,6 +1,7 @@
 import model.*;
 
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -50,7 +51,7 @@ public class MyStrategy {
     private MoveAction move(Unit enemy, LootBox targetBonus) {
         Point targetPos = null;
         if (targetBonus != null && targetBonus.getItem() instanceof Item.HealthPack) {
-            targetPos = new Point(targetBonus.getPosition());
+            targetPos = heathPackTargetPoint(targetBonus);
         } else if (targetBonus != null && me.getWeapon() == null) {
             targetPos = new Point(targetBonus.getPosition());
         } else if (!inLineOfSight(enemy)) {
@@ -81,6 +82,23 @@ public class MyStrategy {
                 jumpDown = (int) targetPos.x == (int) myX && (int) targetPos.y < (int) myY;
             }
             return new MoveAction(getVelocity(targetPos), jump, jumpDown);
+        }
+    }
+
+    private Point heathPackTargetPoint(LootBox healthPack) {
+        Point hpPos = new Point(healthPack.getPosition());
+        if (me.getHealth() < 75) {
+            return hpPos;
+        }
+        if ((int) me.getPosition().getY() != (int) healthPack.getPosition().getY()) {
+            return hpPos;
+        }
+        double centerX = map.length / 2.0;
+        double delta = healthPack.getSize().getX() / 2 + me.getSize().getX() / 2 + 0.1;
+        if (hpPos.x < centerX) {
+            return new Point(hpPos.x + delta, hpPos.y);
+        } else {
+            return new Point(hpPos.x - delta, hpPos.y);
         }
     }
 
