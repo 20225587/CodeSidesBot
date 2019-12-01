@@ -34,7 +34,7 @@ public class MyStrategy {
         return new UnitAction(
                 moveAction.velocity,
                 moveAction.jump,
-                !moveAction.jump,
+                moveAction.jumpDown,
                 aimDir,
                 shoot,
                 false,
@@ -52,9 +52,25 @@ public class MyStrategy {
             targetPos = new Point(enemy.getPosition());
         }
         if (targetPos == null) {
-            return new MoveAction(0, true);
+            return new MoveAction(0, true, false);
         } else {
-            return new MoveAction(getVelocity(targetPos), shouldJump(targetPos));
+            double myY = me.getPosition().getY();
+            double myX = me.getPosition().getX();
+
+            boolean jump = targetPos.y > myY;
+            if (targetPos.x > myX && tileAtPoint(myX + 1, myY) == WALL) {
+                jump = true;
+            }
+            if (targetPos.x < myX && tileAtPoint(myX - 1, myY) == WALL) {
+                jump = true;
+            }
+            boolean jumpDown;
+            if (jump) {
+                jumpDown = false;
+            } else {
+                jumpDown = (int) targetPos.x == (int) myX && (int) targetPos.y < (int) myY;
+            }
+            return new MoveAction(getVelocity(targetPos), jump, jumpDown);
         }
     }
 
@@ -151,20 +167,6 @@ public class MyStrategy {
         return (targetPos.x > myX) ?
                 game.getProperties().getUnitMaxHorizontalSpeed() :
                 -game.getProperties().getUnitMaxHorizontalSpeed();
-    }
-
-    private boolean shouldJump(Point targetPos) {
-        double myY = me.getPosition().getY();
-        double myX = me.getPosition().getX();
-
-        boolean jump = targetPos.y >= myY;
-        if (targetPos.x > myX && tileAtPoint(myX + 1, myY) == WALL) {
-            jump = true;
-        }
-        if (targetPos.x < myX && tileAtPoint(myX - 1, myY) == WALL) {
-            jump = true;
-        }
-        return jump;
     }
 
     private Vec2Double aim(Unit enemy) {
@@ -304,10 +306,12 @@ public class MyStrategy {
     static class MoveAction {
         final double velocity;
         final boolean jump;
+        final boolean jumpDown;
 
-        MoveAction(double velocity, boolean jump) {
+        MoveAction(double velocity, boolean jump, boolean jumpDown) {
             this.velocity = velocity;
             this.jump = jump;
+            this.jumpDown = jumpDown;
         }
     }
 }
