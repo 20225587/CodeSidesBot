@@ -27,18 +27,35 @@ public class MyStrategy {
 
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus(enemy);
-        Vec2Double targetPos = chooseTarget(enemy, targetBonus);
+        MoveAction moveAction = move(enemy, targetBonus);
         Vec2Double aimDir = aim(enemy);
-        boolean jump = shouldJump(targetPos);
-        double velocity = getVelocity(targetPos);
         boolean shoot = shouldShoot(enemy);
 
-        //debug.showSpread(me);
-        if (shoot) {
-            debug0.draw(new CustomData.Log("shoot"));
-        }
+        return new UnitAction(
+                moveAction.velocity,
+                moveAction.jump,
+                !moveAction.jump,
+                aimDir,
+                shoot,
+                false,
+                false
+        );
+    }
 
-        return new UnitAction(velocity, jump, !jump, aimDir, shoot, false, false);
+    private MoveAction move(Unit enemy, LootBox targetBonus) {
+        Point targetPos = null;
+        if (targetBonus != null && targetBonus.getItem() instanceof Item.HealthPack) {
+            targetPos = new Point(targetBonus.getPosition());
+        } else if (targetBonus != null && me.getWeapon() == null) {
+            targetPos = new Point(targetBonus.getPosition());
+        } else if (!inLineOfSight(enemy)) {
+            targetPos = new Point(enemy.getPosition());
+        }
+        if (targetPos == null) {
+            return new MoveAction(0, true);
+        } else {
+            return new MoveAction(getVelocity(targetPos), shouldJump(targetPos));
+        }
     }
 
     private boolean shouldShoot(Unit enemy) {
@@ -109,6 +126,14 @@ public class MyStrategy {
         return dist(a.getX(), a.getY(), b.getPosition().getX(), b.getPosition().getY());
     }
 
+    private double dist(Unit a, Point b) {
+        return dist(a.getPosition(), b);
+    }
+
+    private double dist(Vec2Double a, Point b) {
+        return dist(a.getX(), a.getY(), b.x, b.y);
+    }
+
     private double sqr(double x) {
         return x * x;
     }
@@ -118,27 +143,25 @@ public class MyStrategy {
     }
 
 
-    private double getVelocity(Vec2Double targetPos) {
+    private double getVelocity(Point targetPos) {
         double myX = me.getPosition().getX();
-        if (abs(myX - targetPos.getX()) <= me.getSize().getX() / 8) {
+        if (abs(myX - targetPos.x) <= me.getSize().getX() / 8) {
             return 0;
         }
-        return (targetPos.getX() > myX) ?
+        return (targetPos.x > myX) ?
                 game.getProperties().getUnitMaxHorizontalSpeed() :
                 -game.getProperties().getUnitMaxHorizontalSpeed();
     }
 
-    private boolean shouldJump(Vec2Double targetPos) {
+    private boolean shouldJump(Point targetPos) {
         double myY = me.getPosition().getY();
         double myX = me.getPosition().getX();
-        double targetY = targetPos.getY();
-        double targetX = targetPos.getX();
 
-        boolean jump = targetY > myY;
-        if (targetX > myX && tileAtPoint(myX + 1, myY) == WALL) {
+        boolean jump = targetPos.y >= myY;
+        if (targetPos.x > myX && tileAtPoint(myX + 1, myY) == WALL) {
             jump = true;
         }
-        if (targetX < myX && tileAtPoint(myX - 1, myY) == WALL) {
+        if (targetPos.x < myX && tileAtPoint(myX - 1, myY) == WALL) {
             jump = true;
         }
         return jump;
@@ -149,18 +172,6 @@ public class MyStrategy {
                 enemy.getPosition().getX() - me.getPosition().getX(),
                 enemy.getPosition().getY() - me.getPosition().getY()
         );
-    }
-
-    private Vec2Double chooseTarget(Unit nearestEnemy, LootBox targetBonus) {
-        Vec2Double targetPos = me.getPosition();
-        if (targetBonus != null && targetBonus.getItem() instanceof Item.HealthPack) {
-            targetPos = targetBonus.getPosition();
-        } else if (targetBonus != null && me.getWeapon() == null) {
-            targetPos = targetBonus.getPosition();
-        } else if (nearestEnemy != null) {
-            targetPos = nearestEnemy.getPosition();
-        }
-        return targetPos;
     }
 
     private LootBox chooseTargetBonus(Unit enemy) {
@@ -287,6 +298,16 @@ public class MyStrategy {
             Vec2Float pos = p.add(new Point(-size / 2, -size / 2)).toV2F();
             Vec2Float sizeV = new Vec2Float((float) size, (float) size);
             debug.draw(new CustomData.Rect(pos, sizeV, color));
+        }
+    }
+
+    static class MoveAction {
+        final double velocity;
+        final boolean jump;
+
+        MoveAction(double velocity, boolean jump) {
+            this.velocity = velocity;
+            this.jump = jump;
         }
     }
 }
