@@ -44,9 +44,9 @@ public class MyStrategy {
 
         //-------
 
-//        if (true) {
-//            return testSimulation();
-//        }
+        if (true) {
+            return testSimulation();
+        }
 
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus(enemy);
@@ -65,7 +65,10 @@ public class MyStrategy {
         );
     }
 
-    List<MoveAction> moves = Collections.nCopies(100, new MoveAction(0, true, false));
+    List<MoveAction> moves = Stream.concat(
+            Collections.nCopies(10, new MoveAction(0, true, false)).stream(),
+            Collections.nCopies(10, new MoveAction(0, false, false)).stream()
+    ).collect(Collectors.toList());
 
     double oldY;
 

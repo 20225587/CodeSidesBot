@@ -30,7 +30,7 @@ public class Simulator {
                 if (move.jump && remainingJumpTime * 60.0 >= 1) {
                     remainingJumpTime -= 1.0 / 60;
                     curY += SPEED;
-                } else if (remainingJumpTime > 0) {
+                } else if (move.jump && remainingJumpTime > 0) {
                     remainingJumpTime = 0;
                     curY -= SPEED - 4 * WEIRD_SHIFT;
                 } else {
