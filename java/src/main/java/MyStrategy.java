@@ -1,3 +1,5 @@
+import logic.MoveAction;
+import logic.Point;
 import model.*;
 
 import java.util.*;
@@ -274,43 +276,6 @@ public class MyStrategy {
         return (a.getX() - b.getX()) * (a.getX() - b.getX()) + (a.getY() - b.getY()) * (a.getY() - b.getY());
     }
 
-    static class Point {
-        public final double x, y;
-
-        Point(double x, double y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        public Point(Unit unit) {
-            this(unit.getPosition());
-        }
-
-        public Point(Vec2Double p) {
-            this(p.getX(), p.getY());
-        }
-
-        public static Point dir(double a) {
-            return new Point(cos(a), sin(a));
-        }
-
-        Point add(Point p) {
-            return new Point(x + p.x, y + p.y);
-        }
-
-        Vec2Float toV2F() {
-            return new Vec2Float((float) x, (float) y);
-        }
-
-        public Point mult(double v) {
-            return new Point(x * v, y * v);
-        }
-
-        public Point minus(Point a) {
-            return new Point(x - a.x, y - a.y);
-        }
-    }
-
     interface MyDebug {
         void drawLine(Point a, Point b);
 
@@ -381,15 +346,4 @@ public class MyStrategy {
         }
     }
 
-    static class MoveAction {
-        final double velocity;
-        final boolean jump;
-        final boolean jumpDown;
-
-        MoveAction(double velocity, boolean jump, boolean jumpDown) {
-            this.velocity = velocity;
-            this.jump = jump;
-            this.jumpDown = jumpDown;
-        }
-    }
 }
