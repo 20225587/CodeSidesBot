@@ -42,4 +42,9 @@ public class Point {
     public Point minus(Point a) {
         return new Point(x - a.x, y - a.y);
     }
+
+    @Override
+    public String toString() {
+        return "(" + x + "," + y + ")";
+    }
 }

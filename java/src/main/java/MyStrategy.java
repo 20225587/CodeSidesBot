@@ -1,5 +1,7 @@
 import logic.MoveAction;
 import logic.Point;
+import logic.Simulator;
+import logic.UnitState;
 import model.*;
 
 import java.util.*;
@@ -9,19 +11,21 @@ import java.util.stream.Stream;
 
 import static java.lang.Math.*;
 import static model.Tile.*;
+import static logic.Utils.*;
 
 public class MyStrategy {
 
-    Unit me;
-    Game game;
-    MyDebug debug;
-    Tile[][] map;
     public static final ColorFloat BLACK = new ColorFloat(0, 0, 0, 1);
     public static final ColorFloat RED = new ColorFloat(1, 0, 0, 1);
     public static final ColorFloat GREEN = new ColorFloat(0, 1, 0, 1);
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
 
     final boolean fake;
+
+    Unit me;
+    Game game;
+    MyDebug debug;
+    Tile[][] map;
 
     public MyStrategy() {
         fake = false;
@@ -36,8 +40,13 @@ public class MyStrategy {
         this.game = game;
         this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
+        //System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
 
         //-------
+
+//        if (true) {
+//            return testSimulation();
+//        }
 
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus(enemy);
@@ -51,6 +60,28 @@ public class MyStrategy {
                 moveAction.jumpDown,
                 aimDir,
                 shoot,
+                false,
+                false
+        );
+    }
+
+    List<MoveAction> moves = Collections.nCopies(100, new MoveAction(0, true, false));
+
+    double oldY;
+
+    private UnitAction testSimulation() {
+        UnitState state = new UnitState(me);
+        System.out.println(state + ",");
+        Simulator simulator = new Simulator();
+        simulator.simulate(state, map, moves);
+        MoveAction curAction = moves.get(game.getCurrentTick());
+        oldY = me.getPosition().getY();
+        return new UnitAction(
+                curAction.velocity,
+                curAction.jump,
+                curAction.jumpDown,
+                new Vec2Double(0, 0),
+                false,
                 false,
                 false
         );
@@ -177,38 +208,6 @@ public class MyStrategy {
         double r = max(enemy.getSize().getX(), enemy.getSize().getY()) / 2;
         double angle = atan(r / d);
         return spread <= angle;
-    }
-
-    private double dist(Point a, Unit b) {
-        return dist(a.x, a.y, b.getPosition().getX(), b.getPosition().getY());
-    }
-
-    private double dist(Unit me, Unit enemy) {
-        return dist(me.getPosition(), enemy.getPosition());
-    }
-
-    private double dist(Vec2Double a, Vec2Double b) {
-        return dist(a.getX(), a.getY(), b.getX(), b.getY());
-    }
-
-    private double dist(double x1, double y1, double x2, double y2) {
-        return sqrt((sqr(x1 - x2) + sqr(y1 - y2)));
-    }
-
-    private double dist(Vec2Double a, Unit b) {
-        return dist(a.getX(), a.getY(), b.getPosition().getX(), b.getPosition().getY());
-    }
-
-    private double dist(Unit a, Point b) {
-        return dist(a.getPosition(), b);
-    }
-
-    private double dist(Vec2Double a, Point b) {
-        return dist(a.getX(), a.getY(), b.x, b.y);
-    }
-
-    private double sqr(double x) {
-        return x * x;
     }
 
     private static Point muzzlePoint(Unit unit) {
