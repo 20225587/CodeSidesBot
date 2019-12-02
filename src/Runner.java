@@ -12,8 +12,14 @@ import util.StreamUtil;
 public class Runner {
     private final InputStream inputStream;
     private final OutputStream outputStream;
+    private final MyStrategy myStrategy;
 
     Runner(String host, int port, String token) throws IOException {
+        this(host, port, token, new MyStrategy());
+    }
+
+    Runner(String host, int port, String token, MyStrategy myStrategy) throws IOException {
+        this.myStrategy = myStrategy;
         Socket socket = new Socket(host, port);
         socket.setTcpNoDelay(true);
         inputStream = new BufferedInputStream(socket.getInputStream());
@@ -23,7 +29,6 @@ public class Runner {
     }
 
     void run() throws IOException {
-        MyStrategy myStrategy = new MyStrategy();
         Debug debug = new Debug(outputStream);
         while (true) {
             model.ServerMessageGame message = model.ServerMessageGame.readFrom(inputStream);

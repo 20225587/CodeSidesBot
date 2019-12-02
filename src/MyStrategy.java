@@ -19,10 +19,20 @@ public class MyStrategy {
     public static final ColorFloat GREEN = new ColorFloat(0, 1, 0, 1);
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
 
+    final boolean fake;
+
+    public MyStrategy() {
+        fake = false;
+    }
+
+    public MyStrategy(boolean fake) {
+        this.fake = fake;
+    }
+
     public UnitAction getAction(Unit me, Game game, Debug debug0) {
         this.me = me;
         this.game = game;
-        this.debug = new MyDebug(debug0);
+        this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
 
         //-------
@@ -301,10 +311,18 @@ public class MyStrategy {
         }
     }
 
-    static class MyDebug {
+    interface MyDebug {
+        void drawLine(Point a, Point b);
+
+        void drawLine(Point a, Point b, ColorFloat color);
+
+        void drawSquare(Point p, double size, ColorFloat color);
+    }
+
+    static class MyDebugImpl implements MyDebug {
         final Debug debug;
 
-        MyDebug(Debug debug) {
+        MyDebugImpl(Debug debug) {
             this.debug = debug;
         }
 
@@ -312,11 +330,13 @@ public class MyStrategy {
             drawLine(new Point(a), b);
         }
 
-        private void drawLine(Point a, Point b) {
+        @Override
+        public void drawLine(Point a, Point b) {
             drawLine(a, b, new ColorFloat(0f, 0f, 0f, 0.9f));
         }
 
-        private void drawLine(Point a, Point b, ColorFloat color) {
+        @Override
+        public void drawLine(Point a, Point b, ColorFloat color) {
             debug.draw(new CustomData.Line(a.toV2F(), b.toV2F(), 0.1f, color));
         }
 
@@ -339,10 +359,25 @@ public class MyStrategy {
             drawLine(muzzle, to2);
         }
 
+        @Override
         public void drawSquare(Point p, double size, ColorFloat color) {
             Vec2Float pos = p.add(new Point(-size / 2, -size / 2)).toV2F();
             Vec2Float sizeV = new Vec2Float((float) size, (float) size);
             debug.draw(new CustomData.Rect(pos, sizeV, color));
+        }
+    }
+
+    static class MyDebugStub implements MyDebug {
+        @Override
+        public void drawLine(Point a, Point b) {
+        }
+
+        @Override
+        public void drawLine(Point a, Point b, ColorFloat color) {
+        }
+
+        @Override
+        public void drawSquare(Point p, double size, ColorFloat color) {
         }
     }
 
