@@ -1,5 +1,6 @@
 package logic;
 
+import model.Tile;
 import model.Unit;
 import model.Vec2Double;
 
@@ -48,5 +49,9 @@ public class Utils {
 
     public static double fromApiSpeed(double speed) {
         return speed / 60;
+    }
+
+    public static Tile tileAtPoint(Tile[][] map, double x, double y) {
+        return map[(int) x][(int) y];
     }
 }

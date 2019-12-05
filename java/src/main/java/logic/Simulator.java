@@ -6,10 +6,13 @@ import model.Tile;
 import java.util.ArrayList;
 import java.util.List;
 
+import static logic.Utils.*;
 import static model.Tile.*;
 
 public class Simulator {
-    static double SPEED = 1.0 / 6;
+    public static double SPEED = 1.0 / 6;
+    public static double WIDTH = 0.9;
+    public static double HEIGHT = 1.8;
     public static final double WEIRD_SHIFT = SPEED / 100;
     static int JUMP_TICKS = 32;
 
@@ -20,6 +23,7 @@ public class Simulator {
         for (MoveAction move : moves) {
             tick++;
             double curY = curState.position.y;
+            double curX = curState.position.x;
             double remainingJumpTime = curState.remainingJumpTime;
             boolean standing = isStanding(curState.position, map);
             if (standing) {
@@ -39,10 +43,20 @@ public class Simulator {
                     curY -= SPEED;
                 }
             }
-            curState = new UnitState(new Point(curState.position.x, curY), remainingJumpTime);
+            if (!collidesWithWall(map, curX + move.speed, curY)) {
+                curX += move.speed;
+            }
+            curState = new UnitState(new Point(curX, curY), remainingJumpTime);
             r.add(curState);
         }
         return r;
+    }
+
+    private boolean collidesWithWall(Tile[][] map, double x, double y) {
+        return tileAtPoint(map, x + WIDTH / 2, y) == WALL ||
+                tileAtPoint(map, x - WIDTH / 2, y) == WALL ||
+                tileAtPoint(map, x + WIDTH / 2, y + HEIGHT) == WALL ||
+                tileAtPoint(map, x - WIDTH / 2, y + HEIGHT) == WALL;
     }
 
     private boolean isStanding(Point p, Tile[][] map) {
@@ -62,8 +76,8 @@ public class Simulator {
         List<Point> r = new ArrayList<>();
         Point curPos = new Point(bullet.getPosition());
         Point speed = new Point(
-                Utils.fromApiSpeed(bullet.getVelocity().getX()),
-                Utils.fromApiSpeed(bullet.getVelocity().getY())
+                fromApiSpeed(bullet.getVelocity().getX()),
+                fromApiSpeed(bullet.getVelocity().getY())
         );
         for (int i = 0; i < ticks; i++) {
             curPos = curPos.add(speed);

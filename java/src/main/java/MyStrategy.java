@@ -1,7 +1,4 @@
-import logic.MoveAction;
-import logic.Point;
-import logic.Simulator;
-import logic.UnitState;
+import logic.*;
 import model.*;
 
 import java.util.*;
@@ -10,6 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.*;
+import static logic.Simulator.SPEED;
 import static model.Tile.*;
 import static logic.Utils.*;
 import static model.WeaponType.*;
@@ -55,7 +53,7 @@ public class MyStrategy {
         boolean swap = bazookaOnly && me.getWeapon() != null && me.getWeapon().getTyp() != ROCKET_LAUNCHER;
 
         return new UnitAction(
-                toApiSpeed(moveAction.velocity),
+                toApiSpeed(moveAction.speed),
                 moveAction.jump,
                 moveAction.jumpDown,
                 aimDir,
@@ -84,7 +82,7 @@ public class MyStrategy {
         MoveAction curAction = moves.get(game.getCurrentTick());
         oldY = me.getPosition().getY();
         return new UnitAction(
-                curAction.velocity,
+                curAction.speed,
                 curAction.jump,
                 curAction.jumpDown,
                 new Vec2Double(0, 0),
@@ -100,7 +98,7 @@ public class MyStrategy {
         /*if (!fake) {
             move = new MoveAction(0, false, false);
         } else {
-            move = new MoveAction(move.velocity, true, false);
+            move = new MoveAction(move.speed, true, false);
         }/**/
         MoveAction dodge = tryDodgeBullets(move);
         if (dodge != null) {
@@ -161,14 +159,8 @@ public class MyStrategy {
                 debug.drawSquare(p, 0.1, RED);
             }
         }
-        List<List<MoveAction>> plans = new ArrayList<>();
-        for (int standCnt = 0; standCnt <= steps; standCnt++) {
-            List<MoveAction> plan = Stream.concat(
-                    Collections.nCopies(standCnt, new MoveAction(0, false, false)).stream(),
-                    Collections.nCopies(steps - standCnt, new MoveAction(0, true, false)).stream()
-            ).collect(Collectors.toList());
-            plans.add(plan);
-        }
+        List<List<MoveAction>> plans = genPlans(steps);
+
         double maxDist = 0;
         List<MoveAction> bestPlan = null;
         for (List<MoveAction> plan : plans) {
@@ -183,6 +175,19 @@ public class MyStrategy {
             return null;
         }
         return bestPlan.get(0);
+    }
+
+    private List<List<MoveAction>> genPlans(int steps) {
+        List<List<MoveAction>> plans = new ArrayList<>();
+        for (int standCnt = 0; standCnt <= steps; standCnt++) {
+            plans.add(Stream.concat(
+                    Collections.nCopies(standCnt, new MoveAction(0, false, false)).stream(),
+                    Collections.nCopies(steps - standCnt, new MoveAction(0, true, false)).stream()
+            ).collect(Collectors.toList()));
+        }
+        plans.add(Collections.nCopies(steps, new MoveAction(SPEED, false, false)));
+        plans.add(Collections.nCopies(steps, new MoveAction(-SPEED, false, false)));
+        return plans;
     }
 
     private double minDistToBulletOrExplosion(List<UnitState> states) {
@@ -321,7 +326,7 @@ public class MyStrategy {
     }
 
     private Tile tileAtPoint(double x, double y) {
-        return map[(int) x][(int) y];
+        return Utils.tileAtPoint(map, x, y);
     }
 
     private boolean goodSpread(Unit enemy, Weapon weapon) { // todo rework
@@ -344,7 +349,14 @@ public class MyStrategy {
 
 
     private double getVelocity(Point targetPos) {
-        return targetPos.x - me.getPosition().getX();
+        double r = targetPos.x - me.getPosition().getX();
+        if (r > SPEED) {
+            return SPEED;
+        }
+        if (r < -SPEED) {
+            return -SPEED;
+        }
+        return r;
     }
 
     private Vec2Double aim(Unit enemy) {
