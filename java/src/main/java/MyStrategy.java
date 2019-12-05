@@ -57,6 +57,7 @@ public class MyStrategy {
                 aimDir,
                 shoot,
                 false,
+                false,
                 false
         );
     }
@@ -83,6 +84,7 @@ public class MyStrategy {
                 curAction.jump,
                 curAction.jumpDown,
                 new Vec2Double(0, 0),
+                false,
                 false,
                 false,
                 false
