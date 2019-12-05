@@ -198,7 +198,7 @@ public class MyStrategy {
                 Point bulletPos = bulletPositions.get(i);
                 Point myPos = states.get(i).position;
                 minDist = min(minDist, distToBullet(myPos, bulletPos, bullet.getSize()));
-                if (tileAtPoint(bulletPos) == WALL) {
+                if (bulletCollidesWithWall(map, bulletPos, bullet.getSize())) {
                     if (bullet.getExplosionParams() != null) {
                         minDist = min(
                                 minDist,
@@ -294,7 +294,7 @@ public class MyStrategy {
         Point delta = b.minus(a).mult(1.0 / n);
         for (int i = 0; i < n; i++) {
             Point t = a.add(delta.mult(i));
-            if (tileAtPoint(t) == WALL) {
+            if (bulletCollidesWithWall(map, t, me.getWeapon().getParams().getBullet().getSize())) {
                 blocked = true;
                 debug.drawSquare(t, 0.1, RED);
             } else {

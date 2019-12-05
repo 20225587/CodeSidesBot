@@ -5,6 +5,7 @@ import model.Unit;
 import model.Vec2Double;
 
 import static java.lang.Math.*;
+import static model.Tile.WALL;
 
 public class Utils {
     public static double dist(Point a, Unit b) {
@@ -53,5 +54,19 @@ public class Utils {
 
     public static Tile tileAtPoint(Tile[][] map, double x, double y) {
         return map[(int) x][(int) y];
+    }
+
+    public static boolean unitCollidesWithWall(Tile[][] map, double x, double y) {
+        return tileAtPoint(map, x + Simulator.WIDTH / 2, y) == WALL ||
+                tileAtPoint(map, x - Simulator.WIDTH / 2, y) == WALL ||
+                tileAtPoint(map, x + Simulator.WIDTH / 2, y + Simulator.HEIGHT) == WALL ||
+                tileAtPoint(map, x - Simulator.WIDTH / 2, y + Simulator.HEIGHT) == WALL;
+    }
+
+    public static boolean bulletCollidesWithWall(Tile[][] map, Point p, double size) {
+        return tileAtPoint(map, p.x - size / 2, p.y - size / 2) == WALL ||
+                tileAtPoint(map, p.x - size / 2, p.y + size / 2) == WALL ||
+                tileAtPoint(map, p.x + size / 2, p.y - size / 2) == WALL ||
+                tileAtPoint(map, p.x + size / 2, p.y + size / 2) == WALL;
     }
 }

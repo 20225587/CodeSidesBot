@@ -43,24 +43,17 @@ public class Simulator {
                     curY -= SPEED;
                 }
             }
-            if (collidesWithWall(map, curX, curY)) { // todo rework
+            if (unitCollidesWithWall(map, curX, curY)) { // todo rework
                 curY = curState.position.y;
             }
             curX += move.speed;
-            if (collidesWithWall(map, curX + move.speed, curY)) {// todo rework
+            if (unitCollidesWithWall(map, curX + move.speed, curY)) {// todo rework
                 curX = curState.position.x;
             }
             curState = new UnitState(new Point(curX, curY), remainingJumpTime);
             r.add(curState);
         }
         return r;
-    }
-
-    private boolean collidesWithWall(Tile[][] map, double x, double y) {
-        return tileAtPoint(map, x + WIDTH / 2, y) == WALL ||
-                tileAtPoint(map, x - WIDTH / 2, y) == WALL ||
-                tileAtPoint(map, x + WIDTH / 2, y + HEIGHT) == WALL ||
-                tileAtPoint(map, x - WIDTH / 2, y + HEIGHT) == WALL;
     }
 
     private boolean isStanding(Point p, Tile[][] map) {
