@@ -3,7 +3,7 @@ package logic;
 import model.Unit;
 
 public class UnitState {
-    final Point position;
+    public final Point position;
     final double remainingJumpTime;
 
     public UnitState(Point position, double remainingJumpTime) {

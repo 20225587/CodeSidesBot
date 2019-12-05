@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import static java.lang.Math.*;
 import static model.Tile.*;
 import static logic.Utils.*;
+import static model.WeaponType.*;
 
 public class MyStrategy {
 
@@ -26,6 +27,7 @@ public class MyStrategy {
     Game game;
     MyDebug debug;
     Tile[][] map;
+    Simulator simulator = new Simulator();
 
     public MyStrategy() {
         fake = false;
@@ -40,20 +42,14 @@ public class MyStrategy {
         this.game = game;
         this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
-        //System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
 
         //-------
-
-        if (true) {
-            return testSimulation();
-        }
 
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus(enemy);
         MoveAction moveAction = move(enemy, targetBonus);
         Vec2Double aimDir = aim(enemy);
         boolean shoot = shouldShoot(enemy);
-
         return new UnitAction(
                 toApiSpeed(moveAction.velocity),
                 moveAction.jump,
@@ -63,6 +59,10 @@ public class MyStrategy {
                 false,
                 false
         );
+    }
+
+    private void printMap() {
+        System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
     }
 
     List<MoveAction> moves = Stream.concat(
@@ -75,7 +75,6 @@ public class MyStrategy {
     private UnitAction testSimulation() {
         UnitState state = new UnitState(me);
         System.out.println(state + ",");
-        Simulator simulator = new Simulator();
         simulator.simulate(state, map, moves);
         MoveAction curAction = moves.get(game.getCurrentTick());
         oldY = me.getPosition().getY();
@@ -90,11 +89,16 @@ public class MyStrategy {
         );
     }
 
-    double toApiSpeed(double speed) {
-        return speed * 60;
+    private MoveAction move(Unit enemy, LootBox targetBonus) {
+        MoveAction move = move0(enemy, targetBonus);
+        MoveAction dodge = tryDodgeBullets(move);
+        if (dodge != null) {
+            return dodge;
+        }
+        return move;
     }
 
-    private MoveAction move(Unit enemy, LootBox targetBonus) {
+    private MoveAction move0(Unit enemy, LootBox targetBonus) {
         Point targetPos = null;
         if (targetBonus != null && targetBonus.getItem() instanceof Item.HealthPack) {
             targetPos = heathPackTargetPoint(targetBonus);
@@ -104,7 +108,7 @@ public class MyStrategy {
             targetPos = new Point(enemy.getPosition());
         }
         if (targetPos == null) {
-            return new MoveAction(0, true, false);
+            return new MoveAction(0, false, false);
         } else {
             debug.drawLine(new Point(me), targetPos, GREEN);
             double myY = me.getPosition().getY();
@@ -128,6 +132,92 @@ public class MyStrategy {
                 jumpDown = (int) targetPos.x == (int) myX && (int) targetPos.y < (int) myY;
             }
             return new MoveAction(getVelocity(targetPos), jump, jumpDown);
+        }
+    }
+
+    private MoveAction tryDodgeBullets(MoveAction move) { // returns null if not in danger or can't dodge
+        UnitState state = new UnitState(me);
+        int steps = 100;
+        List<UnitState> states = simulator.simulate(state, map, Collections.nCopies(steps, move));
+        double dangerousDist = 1;
+        double defaultDist = minDistToBullet(states);
+        if (defaultDist > dangerousDist) {
+            return null;
+        }
+        for (Bullet bullet : game.getBullets()) {
+            List<Point> bulletPositions = simulator.simulateBullet(bullet, steps);
+            for (Point p : bulletPositions) {
+                debug.drawSquare(p, 0.1, RED);
+            }
+        }
+        List<List<MoveAction>> plans = new ArrayList<>();
+        for (int standCnt = 0; standCnt <= steps; standCnt++) {
+            List<MoveAction> plan = Stream.concat(
+                    Collections.nCopies(standCnt, new MoveAction(0, false, false)).stream(),
+                    Collections.nCopies(steps - standCnt, new MoveAction(0, true, false)).stream()
+            ).collect(Collectors.toList());
+            plans.add(plan);
+        }
+        double maxDist = 0;
+        List<MoveAction> bestPlan = null;
+        for (List<MoveAction> plan : plans) {
+            List<UnitState> dodgeStates = simulator.simulate(state, map, plan);
+            double dist = minDistToBullet(dodgeStates);
+            if (dist > maxDist) {
+                maxDist = dist;
+                bestPlan = plan;
+            }
+        }
+        if (maxDist <= defaultDist) {
+            return null;
+        }
+        return bestPlan.get(0);
+    }
+
+    private double minDistToBullet(List<UnitState> states) {
+        double minDist = Double.POSITIVE_INFINITY;
+        for (Bullet bullet : game.getBullets()) {
+            List<Point> bulletPositions = simulator.simulateBullet(bullet, states.size());
+            for (int i = 0; i < bulletPositions.size(); i++) {
+                Point bulletPos = bulletPositions.get(i);
+                Point myPos = states.get(i).position;
+                minDist = min(minDist, distToBullet(myPos, me.getSize(), bulletPos, bullet.getSize()));
+            }
+        }
+        return minDist;
+    }
+
+    private static double distToBullet(Point myPos, Vec2Double mySize, Point bulletPos, double size) {
+        double myX = myPos.x;
+        double myY = myPos.y;
+        double myWidth = mySize.getX();
+        double myHeight = mySize.getY();
+        return max(segmentDist(
+                new Segment(myX - myWidth / 2, myX + myWidth / 2),
+                new Segment(bulletPos.x - size / 2, bulletPos.x + size / 2)
+        ), segmentDist(
+                new Segment(myY, myY + myHeight),
+                new Segment(bulletPos.y - size / 2, bulletPos.y + size / 2)
+        ));
+    }
+
+    private static double segmentDist(Segment a, Segment b) {
+        if (intersects(a, b)) {
+            return 0;
+        }
+        return max(a.left - b.right, b.left - a.right);
+    }
+
+    private static boolean intersects(Segment a, Segment b) {
+        return !(a.right < b.left || a.left > b.right);
+    }
+
+    static class Segment {
+        final double left, right;
+
+        Segment(double left, double right) {
+            this.left = left;
+            this.right = right;
         }
     }
 
@@ -259,6 +349,10 @@ public class MyStrategy {
         return weapons.stream()
                 .min(Comparator.comparing(w -> dist(w.getPosition(), me.getPosition())))
                 .orElse(null);
+    }
+
+    private WeaponType getType(LootBox lb) {
+        return ((Item.Weapon) lb.getItem()).getWeaponType();
     }
 
     private Unit chooseEnemy() {

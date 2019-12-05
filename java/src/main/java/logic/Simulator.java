@@ -1,5 +1,6 @@
 package logic;
 
+import model.Bullet;
 import model.Tile;
 
 import java.util.ArrayList;
@@ -50,7 +51,24 @@ public class Simulator {
         if (y == 0) { // hack
             return true;
         }
+        if (y >= map[0].length) { // todo уже давно вылез за потолок
+            return false;
+        }
         Tile below = map[x][y - 1];
         return (below == PLATFORM || below == WALL) && Math.abs(p.y - (int) p.y) < 0.01;
+    }
+
+    public List<Point> simulateBullet(Bullet bullet, int ticks) {
+        List<Point> r = new ArrayList<>();
+        Point curPos = new Point(bullet.getPosition());
+        Point speed = new Point(
+                Utils.fromApiSpeed(bullet.getVelocity().getX()),
+                Utils.fromApiSpeed(bullet.getVelocity().getY())
+        );
+        for (int i = 0; i < ticks; i++) {
+            curPos = curPos.add(speed);
+            r.add(curPos);
+        }
+        return r;
     }
 }

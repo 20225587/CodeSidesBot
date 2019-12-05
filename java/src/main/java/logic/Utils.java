@@ -41,4 +41,12 @@ public class Utils {
     public static double dist(Point a, Point b) {
         return dist(a.x, a.y, b.x, b.y);
     }
+
+    public static double toApiSpeed(double speed) {
+        return speed * 60;
+    }
+
+    public static double fromApiSpeed(double speed) {
+        return speed / 60;
+    }
 }
