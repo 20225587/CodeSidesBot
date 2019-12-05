@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.*;
-import static logic.Simulator.SPEED;
+import static logic.Simulator.*;
 import static model.Tile.*;
 import static logic.Utils.*;
 import static model.WeaponType.*;
@@ -197,10 +197,13 @@ public class MyStrategy {
             for (int i = 0; i < bulletPositions.size(); i++) {
                 Point bulletPos = bulletPositions.get(i);
                 Point myPos = states.get(i).position;
-                minDist = min(minDist, distToBullet(myPos, me.getSize(), bulletPos, bullet.getSize()));
+                minDist = min(minDist, distToBullet(myPos, bulletPos, bullet.getSize()));
                 if (tileAtPoint(bulletPos) == WALL) {
                     if (bullet.getExplosionParams() != null) {
-                        minDist = min(minDist, distToExplosion(myPos, me.getSize(), bulletPos, bullet.getExplosionParams()));
+                        minDist = min(
+                                minDist,
+                                distToBullet(myPos, bulletPos, bullet.getExplosionParams().getRadius() * 2)
+                        );
                     }
                     break;
                 }
@@ -209,34 +212,14 @@ public class MyStrategy {
         return minDist;
     }
 
-    private static double distToExplosion(Point myPos, Vec2Double mySize, Point bulletPos, ExplosionParams explosionParams) {
-        List<Point> bounds = getBounds(myPos, mySize);
-        double d = bounds.stream()
-                .map(b -> dist(b, bulletPos))
-                .min(Comparator.naturalOrder())
-                .get();
-        return max(0, d - explosionParams.getRadius());
-    }
-
-    private static List<Point> getBounds(Point myPos, Vec2Double size) {
-        return Arrays.asList(
-                new Point(myPos.x - size.getX() / 2, myPos.y),
-                new Point(myPos.x + size.getX() / 2, myPos.y),
-                new Point(myPos.x - size.getX() / 2, myPos.y + size.getY()),
-                new Point(myPos.x + size.getX() / 2, myPos.y + size.getY())
-        );
-    }
-
-    private static double distToBullet(Point myPos, Vec2Double mySize, Point bulletPos, double size) {
+    private static double distToBullet(Point myPos, Point bulletPos, double size) {
         double myX = myPos.x;
         double myY = myPos.y;
-        double myWidth = mySize.getX();
-        double myHeight = mySize.getY();
         return max(segmentDist(
-                new Segment(myX - myWidth / 2, myX + myWidth / 2),
+                new Segment(myX - WIDTH / 2, myX + WIDTH / 2),
                 new Segment(bulletPos.x - size / 2, bulletPos.x + size / 2)
         ), segmentDist(
-                new Segment(myY, myY + myHeight),
+                new Segment(myY, myY + HEIGHT),
                 new Segment(bulletPos.y - size / 2, bulletPos.y + size / 2)
         ));
     }
@@ -332,15 +315,15 @@ public class MyStrategy {
     private boolean goodSpread(Unit enemy, Weapon weapon) { // todo rework
         if (true) {
             return true;
-        }
+        }/**/
         double spread = weapon.getSpread();
-        if (abs(spread - weapon.getParams().getMinSpread()) < 1e-5) {
+        if (abs(spread - weapon.getParams().getMinSpread()) < 0.1) {
             return true;
         }
         double d = dist(me, enemy);
         double r = max(enemy.getSize().getX(), enemy.getSize().getY()) / 2;
         double angle = atan(r / d);
-        return spread <= angle + 0.25;
+        return spread <= angle;
     }
 
     private static Point muzzlePoint(Unit unit) {
