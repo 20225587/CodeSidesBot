@@ -22,6 +22,7 @@ public class MyStrategy {
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
 
     final boolean fake;
+    final boolean bazookaOnly = false;
 
     Unit me;
     Game game;
@@ -50,6 +51,9 @@ public class MyStrategy {
         MoveAction moveAction = move(enemy, targetBonus);
         Vec2Double aimDir = aim(enemy);
         boolean shoot = shouldShoot(enemy);
+
+        boolean swap = bazookaOnly && me.getWeapon() != null && me.getWeapon().getTyp() != ROCKET_LAUNCHER;
+
         return new UnitAction(
                 toApiSpeed(moveAction.velocity),
                 moveAction.jump,
@@ -57,7 +61,7 @@ public class MyStrategy {
                 aimDir,
                 shoot,
                 false,
-                false,
+                swap,
                 false
         );
     }
@@ -93,6 +97,11 @@ public class MyStrategy {
 
     private MoveAction move(Unit enemy, LootBox targetBonus) {
         MoveAction move = move0(enemy, targetBonus);
+        /*if (!fake) {
+            move = new MoveAction(0, false, false);
+        } else {
+            move = new MoveAction(move.velocity, true, false);
+        }/**/
         MoveAction dodge = tryDodgeBullets(move);
         if (dodge != null) {
             return dodge;
@@ -141,8 +150,8 @@ public class MyStrategy {
         UnitState state = new UnitState(me);
         int steps = 100;
         List<UnitState> states = simulator.simulate(state, map, Collections.nCopies(steps, move));
-        double dangerousDist = 1;
-        double defaultDist = minDistToBullet(states);
+        double dangerousDist = 0.5;
+        double defaultDist = minDistToBulletOrExplosion(states);
         if (defaultDist > dangerousDist) {
             return null;
         }
@@ -164,7 +173,7 @@ public class MyStrategy {
         List<MoveAction> bestPlan = null;
         for (List<MoveAction> plan : plans) {
             List<UnitState> dodgeStates = simulator.simulate(state, map, plan);
-            double dist = minDistToBullet(dodgeStates);
+            double dist = minDistToBulletOrExplosion(dodgeStates);
             if (dist > maxDist) {
                 maxDist = dist;
                 bestPlan = plan;
@@ -176,7 +185,7 @@ public class MyStrategy {
         return bestPlan.get(0);
     }
 
-    private double minDistToBullet(List<UnitState> states) {
+    private double minDistToBulletOrExplosion(List<UnitState> states) {
         double minDist = Double.POSITIVE_INFINITY;
         for (Bullet bullet : game.getBullets()) {
             List<Point> bulletPositions = simulator.simulateBullet(bullet, states.size());
@@ -184,9 +193,33 @@ public class MyStrategy {
                 Point bulletPos = bulletPositions.get(i);
                 Point myPos = states.get(i).position;
                 minDist = min(minDist, distToBullet(myPos, me.getSize(), bulletPos, bullet.getSize()));
+                if (tileAtPoint(bulletPos) == WALL) {
+                    if (bullet.getExplosionParams() != null) {
+                        minDist = min(minDist, distToExplosion(myPos, me.getSize(), bulletPos, bullet.getExplosionParams()));
+                    }
+                    break;
+                }
             }
         }
         return minDist;
+    }
+
+    private static double distToExplosion(Point myPos, Vec2Double mySize, Point bulletPos, ExplosionParams explosionParams) {
+        List<Point> bounds = getBounds(myPos, mySize);
+        double d = bounds.stream()
+                .map(b -> dist(b, bulletPos))
+                .min(Comparator.naturalOrder())
+                .get();
+        return max(0, d - explosionParams.getRadius());
+    }
+
+    private static List<Point> getBounds(Point myPos, Vec2Double size) {
+        return Arrays.asList(
+                new Point(myPos.x - size.getX() / 2, myPos.y),
+                new Point(myPos.x + size.getX() / 2, myPos.y),
+                new Point(myPos.x - size.getX() / 2, myPos.y + size.getY()),
+                new Point(myPos.x + size.getX() / 2, myPos.y + size.getY())
+        );
     }
 
     private static double distToBullet(Point myPos, Vec2Double mySize, Point bulletPos, double size) {
@@ -302,7 +335,7 @@ public class MyStrategy {
         double d = dist(me, enemy);
         double r = max(enemy.getSize().getX(), enemy.getSize().getY()) / 2;
         double angle = atan(r / d);
-        return spread <= angle;
+        return spread <= angle + 0.25;
     }
 
     private static Point muzzlePoint(Unit unit) {
@@ -349,6 +382,7 @@ public class MyStrategy {
 
     private LootBox chooseWeapon(List<LootBox> weapons) {
         return weapons.stream()
+                .filter(w -> !bazookaOnly || getType(w) == ROCKET_LAUNCHER)
                 .min(Comparator.comparing(w -> dist(w.getPosition(), me.getPosition())))
                 .orElse(null);
     }
