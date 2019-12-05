@@ -43,8 +43,12 @@ public class Simulator {
                     curY -= SPEED;
                 }
             }
-            if (!collidesWithWall(map, curX + move.speed, curY)) {
-                curX += move.speed;
+            if (collidesWithWall(map, curX, curY)) { // todo rework
+                curY = curState.position.y;
+            }
+            curX += move.speed;
+            if (collidesWithWall(map, curX + move.speed, curY)) {// todo rework
+                curX = curState.position.x;
             }
             curState = new UnitState(new Point(curX, curY), remainingJumpTime);
             r.add(curState);
