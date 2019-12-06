@@ -18,6 +18,7 @@ public class MyStrategy {
     public static final ColorFloat RED = new ColorFloat(1, 0, 0, 1);
     public static final ColorFloat GREEN = new ColorFloat(0, 1, 0, 1);
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
+    public static final double EXPLOSION_SIZE = 6;
 
     final boolean fake;
     final boolean bazookaOnly = false;
@@ -111,7 +112,7 @@ public class MyStrategy {
         Point targetPos = null;
         if (targetBonus != null && targetBonus.getItem() instanceof Item.HealthPack) {
             targetPos = heathPackTargetPoint(targetBonus);
-        } else if (targetBonus != null && me.getWeapon() == null) {
+        } else if (targetBonus != null) {
             targetPos = new Point(targetBonus.getPosition());
         } else if (!inLineOfSight(enemy)) {
             targetPos = new Point(enemy.getPosition());
@@ -119,7 +120,6 @@ public class MyStrategy {
         if (targetPos == null) {
             return new MoveAction(0, false, false);
         } else {
-            debug.drawLine(new Point(me), targetPos, GREEN);
             double myY = me.getPosition().getY();
             double myX = me.getPosition().getX();
 
@@ -283,7 +283,41 @@ public class MyStrategy {
         if (weapon == null) {
             return false;
         }
-        return inLineOfSight(enemy) && goodSpread(enemy, weapon);
+        if (!inLineOfSight(enemy)) {
+            return false;
+        }
+        if (canExplodeMyselfWithBazooka()) {
+            return false;
+        }
+        return goodSpread(enemy, weapon);
+    }
+
+    private boolean canExplodeMyselfWithBazooka() {
+        if (me.getWeapon().getTyp() != ROCKET_LAUNCHER) {
+            return false;
+        }
+        debug.showSpread(me);
+        double angle = me.getWeapon().getLastAngle();
+        double spread = me.getWeapon().getSpread();
+        return canExplodeMyselfWithBazooka(angle + spread) || canExplodeMyselfWithBazooka(angle - spread);
+    }
+
+    private boolean canExplodeMyselfWithBazooka(double angle) {
+        Point bulletPos = muzzlePoint(me);
+        BulletParams bullet = me.getWeapon().getParams().getBullet();
+        double speed = fromApiSpeed(bullet.getSpeed());
+        Point delta = Point.dir(angle).mult(speed);
+        while (true) {
+            bulletPos = bulletPos.add(delta);
+            if (bulletCollidesWithWall(map, bulletPos, bullet.getSize())) {
+                if (distToBullet(new Point(me), bulletPos, EXPLOSION_SIZE) <= 0.1) {
+                    return true;
+                } else {
+                    break;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean inLineOfSight(Unit enemy) {
@@ -296,9 +330,6 @@ public class MyStrategy {
             Point t = a.add(delta.mult(i));
             if (bulletCollidesWithWall(map, t, me.getWeapon().getParams().getBullet().getSize())) {
                 blocked = true;
-                debug.drawSquare(t, 0.1, RED);
-            } else {
-                debug.drawSquare(t, 0.1, WHITE);
             }
         }
         return !blocked;
@@ -356,7 +387,7 @@ public class MyStrategy {
         List<LootBox> healthPacks = map.getOrDefault(Item.HealthPack.class, Collections.emptyList());
         List<LootBox> mines = map.getOrDefault(Item.Mine.class, Collections.emptyList());
 
-        if (me.getWeapon() == null) {
+        if (me.getWeapon() == null || bazookaOnly && me.getWeapon().getTyp() != ROCKET_LAUNCHER) {
             return chooseWeapon(weapons);
         } else {
             return chooseHealthPack(healthPacks, enemy);
@@ -408,6 +439,8 @@ public class MyStrategy {
 
         void drawLine(Point a, Point b, ColorFloat color);
 
+        void showSpread(Unit me);
+
         void drawSquare(Point p, double size, ColorFloat color);
     }
 
@@ -432,7 +465,8 @@ public class MyStrategy {
             debug.draw(new CustomData.Line(a.toV2F(), b.toV2F(), 0.1f, color));
         }
 
-        private void showSpread(Unit me) {
+        @Override
+        public void showSpread(Unit me) {
             Weapon weapon = me.getWeapon();
             if (weapon != null) {
                 double curDir = weapon.getLastAngle();
@@ -466,6 +500,10 @@ public class MyStrategy {
 
         @Override
         public void drawLine(Point a, Point b, ColorFloat color) {
+        }
+
+        @Override
+        public void showSpread(Unit me) {
         }
 
         @Override
