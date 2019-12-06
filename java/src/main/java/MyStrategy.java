@@ -27,7 +27,7 @@ public class MyStrategy {
     Game game;
     MyDebug debug;
     Tile[][] map;
-    Simulator simulator = new Simulator();
+    Simulator simulator;
 
     public MyStrategy() {
         fake = false;
@@ -42,6 +42,9 @@ public class MyStrategy {
         this.game = game;
         this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
+        if (game.getCurrentTick() == 0) {
+            simulator = new Simulator(map);
+        }
 
         //-------
 
@@ -74,24 +77,22 @@ public class MyStrategy {
     }
 
     List<MoveAction> moves = Stream.concat(
-            Collections.nCopies(10, new MoveAction(SPEED, false, false)).stream(),
+            Collections.nCopies(20, new MoveAction(-SPEED, false, false))
+                    .stream(),
             Collections.nCopies(0, new MoveAction(0, false, false)).stream()
     ).collect(Collectors.toList());
 
-    double oldY;
-
     private UnitAction testSimulation() {
-        if (game.getCurrentTick() == 0) {
-            printMap();
-        }
         if (fake) {
             return noop();
         }
+        if (game.getCurrentTick() == 0) {
+            printMap();
+        }
         UnitState state = new UnitState(me);
         System.out.println(state + ",");
-        simulator.simulate(state, map, moves);
+        simulator.simulate(state, moves);
         MoveAction curAction = moves.get(game.getCurrentTick());
-        oldY = me.getPosition().getY();
         return new UnitAction(
                 toApiSpeed(curAction.speed),
                 curAction.jump,
@@ -198,7 +199,7 @@ public class MyStrategy {
     private MoveAction tryDodgeBullets(MoveAction move) { // returns null if not in danger or can't dodge
         UnitState state = new UnitState(me);
         int steps = 100;
-        List<UnitState> states = simulator.simulate(state, map, Collections.nCopies(steps, move));
+        List<UnitState> states = simulator.simulate(state, Collections.nCopies(steps, move));
         double dangerousDist = 0.5;
         double defaultDist = minDistToBulletOrExplosion(states);
         if (defaultDist > dangerousDist) {
@@ -215,7 +216,7 @@ public class MyStrategy {
         double maxDist = 0;
         List<MoveAction> bestPlan = null;
         for (List<MoveAction> plan : plans) {
-            List<UnitState> dodgeStates = simulator.simulate(state, map, plan);
+            List<UnitState> dodgeStates = simulator.simulate(state, plan);
             double dist = minDistToBulletOrExplosion(dodgeStates);
             if (dist > maxDist) {
                 maxDist = dist;

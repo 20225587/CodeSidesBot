@@ -16,7 +16,13 @@ public class Simulator {
     public static final double WEIRD_SHIFT = SPEED / 100;
     static int JUMP_TICKS = 32;
 
-    public List<UnitState> simulate(UnitState state, Tile[][] map, List<MoveAction> moves) {
+    private final Tile[][] map;
+
+    public Simulator(Tile[][] map) {
+        this.map = map;
+    }
+
+    public List<UnitState> simulate(UnitState state, List<MoveAction> moves) {
         UnitState curState = state;
         List<UnitState> r = new ArrayList<>();
         int tick = 0;
@@ -25,10 +31,10 @@ public class Simulator {
             double curY = curState.position.y;
             double curX = curState.position.x;
             double remainingJumpTime = curState.remainingJumpTime;
-            boolean standing = isStanding(curState.position, map);
+            boolean wasStanding = unitIsStanding(curState.position);
 
             curX += move.speed;
-            if (unitCollidesWithWall(map, curX + move.speed, curY)) {
+            if (unitCollidesWithWall(map, curX, curY)) {
                 if (move.speed > 0) {
                     curX = (int) (curX + WIDTH / 2) - WIDTH / 2;
                 } else {
@@ -36,10 +42,22 @@ public class Simulator {
                 }
             }
 
-            if (standing) {
+            if (wasStanding) {
                 if (move.jump) {
                     curY += SPEED - WEIRD_SHIFT;
                     remainingJumpTime = (JUMP_TICKS + 0.01) / 60.0;
+                } else {
+                    if (!unitIsStanding(new Point(curX, curY))) {
+                        double fallingTime;
+                        if (move.speed > 0) {
+                            fallingTime = ((curX - WIDTH / 2) % 1) / move.speed;
+                        } else {
+                            double rightBorder = curX + WIDTH / 2;
+                            double delta = (1 - rightBorder % 1);
+                            fallingTime = delta / (-move.speed);
+                        }
+                        curY -= fallingTime * SPEED;
+                    }
                 }
             } else {
                 if (move.jump && remainingJumpTime * 60.0 >= 1) {
@@ -62,9 +80,13 @@ public class Simulator {
         return r;
     }
 
-    private boolean isStanding(Point p, Tile[][] map) {
-        int x = (int) p.x;
-        int y = (int) p.y;
+    private boolean unitIsStanding(Point p) {
+        return cornerIsStanding(p.x - WIDTH / 2, p.y) || cornerIsStanding(p.x + WIDTH / 2, p.y);
+    }
+
+    private boolean cornerIsStanding(double px, double py) {
+        int x = (int) px;
+        int y = (int) py;
         if (y == 0) { // hack
             return true;
         }
@@ -72,7 +94,7 @@ public class Simulator {
             return false;
         }
         Tile below = map[x][y - 1];
-        return (below == PLATFORM || below == WALL) && Math.abs(p.y - (int) p.y) < 0.01;
+        return (below == PLATFORM || below == WALL || below == LADDER) && Math.abs(py - (int) py) < 0.01;
     }
 
     public List<Point> simulateBullet(Bullet bullet, int ticks) {
