@@ -26,6 +26,16 @@ public class Simulator {
             double curX = curState.position.x;
             double remainingJumpTime = curState.remainingJumpTime;
             boolean standing = isStanding(curState.position, map);
+
+            curX += move.speed;
+            if (unitCollidesWithWall(map, curX + move.speed, curY)) {
+                if (move.speed > 0) {
+                    curX = (int) (curX + WIDTH / 2) - WIDTH / 2;
+                } else {
+                    curX = (int) (curX - WIDTH / 2) + 1 + WIDTH / 2;
+                }
+            }
+
             if (standing) {
                 if (move.jump) {
                     curY += SPEED - WEIRD_SHIFT;
@@ -45,10 +55,6 @@ public class Simulator {
             }
             if (unitCollidesWithWall(map, curX, curY)) { // todo rework
                 curY = curState.position.y;
-            }
-            curX += move.speed;
-            if (unitCollidesWithWall(map, curX + move.speed, curY)) {// todo rework
-                curX = curState.position.x;
             }
             curState = new UnitState(new Point(curX, curY), remainingJumpTime);
             r.add(curState);

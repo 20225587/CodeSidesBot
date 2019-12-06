@@ -65,18 +65,28 @@ public class MyStrategy {
         );
     }
 
+    private UnitAction noop() {
+        return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
+    }
+
     private void printMap() {
         System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
     }
 
     List<MoveAction> moves = Stream.concat(
-            Collections.nCopies(10, new MoveAction(0, true, false)).stream(),
-            Collections.nCopies(10, new MoveAction(0, false, false)).stream()
+            Collections.nCopies(10, new MoveAction(SPEED, false, false)).stream(),
+            Collections.nCopies(0, new MoveAction(0, false, false)).stream()
     ).collect(Collectors.toList());
 
     double oldY;
 
     private UnitAction testSimulation() {
+        if (game.getCurrentTick() == 0) {
+            printMap();
+        }
+        if (fake) {
+            return noop();
+        }
         UnitState state = new UnitState(me);
         System.out.println(state + ",");
         simulator.simulate(state, map, moves);

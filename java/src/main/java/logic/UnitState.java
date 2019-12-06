@@ -13,7 +13,11 @@ public class UnitState {
 
     public UnitState(Unit me) {
         position = new Point(me);
-        remainingJumpTime = me.getJumpState().getMaxTime();
+        if (me.isOnGround()) {
+            remainingJumpTime = 0;
+        } else {
+            remainingJumpTime = me.getJumpState().getMaxTime();
+        }
     }
 
     @Override
