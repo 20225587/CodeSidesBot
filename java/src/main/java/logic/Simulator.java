@@ -6,6 +6,7 @@ import model.Tile;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.Math.*;
 import static logic.Utils.*;
 import static model.Tile.*;
 
@@ -48,14 +49,22 @@ public class Simulator {
                     remainingJumpTime = (JUMP_TICKS + 0.01) / 60.0;
                 } else {
                     if (!unitIsStanding(new Point(curX, curY))) {
-                        double fallingTime;
-                        if (move.speed > 0) {
-                            fallingTime = ((curX - WIDTH / 2) % 1) / move.speed;
+                        double delta;
+                        if (tileAtPoint(map, curState.position.x, curState.position.y - 1) == LADDER) {
+                            if (move.speed > 0) {
+                                delta = curX % 1;
+                            } else {
+                                delta = 1 - curX % 1;
+                            }
                         } else {
-                            double rightBorder = curX + WIDTH / 2;
-                            double delta = (1 - rightBorder % 1);
-                            fallingTime = delta / (-move.speed);
+                            if (move.speed > 0) {
+                                delta = (curX - WIDTH / 2) % 1;
+                            } else {
+                                double rightBorder = curX + WIDTH / 2;
+                                delta = (1 - rightBorder % 1);
+                            }
                         }
+                        double fallingTime = delta / abs(move.speed);
                         curY -= fallingTime * SPEED;
                     }
                 }
@@ -81,10 +90,12 @@ public class Simulator {
     }
 
     private boolean unitIsStanding(Point p) {
-        return cornerIsStanding(p.x - WIDTH / 2, p.y) || cornerIsStanding(p.x + WIDTH / 2, p.y);
+        return pointIsStanding(p.x - WIDTH / 2, p.y, false)
+                || pointIsStanding(p.x + WIDTH / 2, p.y, false)
+                || pointIsStanding(p.x, p.y, true);
     }
 
-    private boolean cornerIsStanding(double px, double py) {
+    private boolean pointIsStanding(double px, double py, boolean allowLadder) {
         int x = (int) px;
         int y = (int) py;
         if (y == 0) { // hack
@@ -94,7 +105,7 @@ public class Simulator {
             return false;
         }
         Tile below = map[x][y - 1];
-        return (below == PLATFORM || below == WALL || below == LADDER) && Math.abs(py - (int) py) < 0.01;
+        return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 0.01;
     }
 
     public List<Point> simulateBullet(Bullet bullet, int ticks) {

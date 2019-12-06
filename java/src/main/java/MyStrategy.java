@@ -48,6 +48,10 @@ public class MyStrategy {
 
         //-------
 
+        /*if (true) {
+            return testSimulation();
+        }/**/
+
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus(enemy);
         MoveAction moveAction = move(enemy, targetBonus);
