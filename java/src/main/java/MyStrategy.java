@@ -51,7 +51,7 @@ public class MyStrategy {
         Vec2Double aimDir = aim(enemy);
         boolean shoot = shouldShoot(enemy);
 
-        boolean swap = bazookaOnly && me.getWeapon() != null && me.getWeapon().getTyp() != ROCKET_LAUNCHER;
+        boolean swap = me.getWeapon() != null && me.getWeapon().getTyp() == ROCKET_LAUNCHER;
 
         return new UnitAction(
                 toApiSpeed(moveAction.speed),
@@ -441,7 +441,7 @@ public class MyStrategy {
         List<LootBox> healthPacks = map.getOrDefault(Item.HealthPack.class, Collections.emptyList());
         List<LootBox> mines = map.getOrDefault(Item.Mine.class, Collections.emptyList());
 
-        if (me.getWeapon() == null || bazookaOnly && me.getWeapon().getTyp() != ROCKET_LAUNCHER) {
+        if (me.getWeapon() == null || me.getWeapon().getTyp() == ROCKET_LAUNCHER) {
             return chooseWeapon(weapons);
         } else {
             return chooseHealthPack(healthPacks, enemy);
@@ -462,7 +462,7 @@ public class MyStrategy {
 
     private LootBox chooseWeapon(List<LootBox> weapons) {
         return weapons.stream()
-                .filter(w -> !bazookaOnly || getType(w) == ROCKET_LAUNCHER)
+                .filter(w -> getType(w) != ROCKET_LAUNCHER)
                 .min(Comparator.comparing(w -> dist(w.getPosition(), me.getPosition())))
                 .orElse(null);
     }
