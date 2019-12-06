@@ -83,7 +83,7 @@ public class MyStrategy {
         MoveAction curAction = moves.get(game.getCurrentTick());
         oldY = me.getPosition().getY();
         return new UnitAction(
-                curAction.speed,
+                toApiSpeed(curAction.speed),
                 curAction.jump,
                 curAction.jumpDown,
                 new Vec2Double(0, 0),
