@@ -114,12 +114,13 @@ public class MyStrategy {
             targetPos = heathPackTargetPoint(targetBonus);
         } else if (targetBonus != null) {
             targetPos = new Point(targetBonus.getPosition());
-        } else if (!inLineOfSight(enemy)) {
-            targetPos = new Point(enemy.getPosition());
+        } else {
+            targetPos = findShootingPosition(enemy);
         }
         if (targetPos == null) {
             return new MoveAction(0, false, false);
         } else {
+            debug.drawLine(new Point(me), targetPos, WHITE);
             double myY = me.getPosition().getY();
             double myX = me.getPosition().getX();
 
@@ -142,6 +143,46 @@ public class MyStrategy {
             }
             return new MoveAction(getVelocity(targetPos), jump, jumpDown);
         }
+    }
+
+    private Point findShootingPosition(Unit enemy) {
+        double maxDist = 0;
+        Point bestPoint = null;
+        double myX = me.getPosition().getX();
+        double enemyX = enemy.getPosition().getX();
+        for (int x = 1; x < map.length - 1; x++) {
+            for (int y = 1; y < map[0].length - 1; y++) {
+                if (canBeInTile(x, y)) {
+                    Point muzzlePoint = new Point(x + 0.5, y + HEIGHT / 2);
+                    if (inLineOfSight(muzzlePoint, map, me.getWeapon(), enemy)) {
+                        double dist = dist(muzzlePoint, enemy);
+                        boolean sameSide = abs(myX - enemyX) < 1 || (myX < enemyX) == (muzzlePoint.x < enemyX);
+                        if (!sameSide) {
+                            dist -= 1000;
+                        }
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            bestPoint = new Point(x + 0.5, y);
+                        }
+                    }
+                }
+            }
+        }
+        return bestPoint;
+    }
+
+
+    private boolean canBeInTile(int x, int y) {
+        if (map[x][y] == WALL) {
+            return false;
+        }
+        if (map[x][y] == LADDER) {
+            return true;
+        }
+        if (map[x][y - 1] == WALL || map[x][y - 1] == PLATFORM || map[x][y - 1] == LADDER) {
+            return true;
+        }
+        return false;
     }
 
     private MoveAction tryDodgeBullets(MoveAction move) { // returns null if not in danger or can't dodge
@@ -321,14 +362,17 @@ public class MyStrategy {
     }
 
     private boolean inLineOfSight(Unit enemy) {
-        Point a = muzzlePoint(me);
+        return inLineOfSight(muzzlePoint(me), map, me.getWeapon(), enemy);
+    }
+
+    private static boolean inLineOfSight(Point a, Tile[][] map, Weapon weapon, Unit enemy) {
         Point b = muzzlePoint(enemy);
         boolean blocked = false;
         int n = 1000;
         Point delta = b.minus(a).mult(1.0 / n);
         for (int i = 0; i < n; i++) {
             Point t = a.add(delta.mult(i));
-            if (bulletCollidesWithWall(map, t, me.getWeapon().getParams().getBullet().getSize())) {
+            if (bulletCollidesWithWall(map, t, weapon.getParams().getBullet().getSize())) {
                 blocked = true;
             }
         }
