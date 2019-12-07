@@ -13,7 +13,7 @@ public class UnitState {
 
     public UnitState(Unit me) {
         position = new Point(me);
-        if (me.isOnGround()) {
+        if (me.isOnGround()) { // todo hack
             remainingJumpTime = 0;
         } else {
             remainingJumpTime = me.getJumpState().getMaxTime();

@@ -82,8 +82,8 @@ public class MyStrategy {
         System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
     }
 
-    Plan testPlan = //plan(1, new MoveAction(0, false, false))
-            plan(17, new MoveAction(-SPEED, false, false));
+    Plan testPlan = plan(1, new MoveAction(0, false, false))
+            .add(60, new MoveAction(0, true, false));
 
     private UnitAction testSimulation() {
         if (fake) {

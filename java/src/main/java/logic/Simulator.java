@@ -11,14 +11,14 @@ import static logic.Utils.*;
 import static model.Tile.*;
 
 public class Simulator {
-    public static double SPEED = 1.0 / 6;
-    public static double WIDTH = 0.9;
-    public static double HEIGHT = 1.8;
+    public static final double SPEED = 1.0 / 6;
+    public static final double WIDTH = 0.9;
+    public static final double HEIGHT = 1.8;
 
-    private static int TICKS_PER_SECOND = 60;
-    private static int MICROTICKS_PER_TICK = 100;
-    private static double MICROTICK_DURATION = 1.0 / TICKS_PER_SECOND / MICROTICKS_PER_TICK;
-    private static double JUMP_DURATION = 0.55;
+    private static final int TICKS_PER_SECOND = 60;
+    private static final int MICROTICKS_PER_TICK = 100;
+    private static final double MICROTICK_DURATION = 1.0 / TICKS_PER_SECOND / MICROTICKS_PER_TICK;
+    private static final double JUMP_DURATION = 0.55;
 
     private final Tile[][] map;
 
@@ -45,20 +45,30 @@ public class Simulator {
                     }
                 }
 
-                boolean willBeStanding = unitIsStanding(new Point(newX, newY));
+                boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
+                boolean willBeStanding = canJump(new Point(newX, newY));
+                boolean onLadder = onLadder(newX, newY);
 
-                if (willBeStanding) {
-                    if (move.jump) {
-                        newY += SPEED / MICROTICKS_PER_TICK;
-                        remainingJumpTime = JUMP_DURATION - MICROTICK_DURATION;
-                    }
+                if (move.jumpDown && canMoveDown) {
+                    newY -= SPEED / MICROTICKS_PER_TICK;
+                    remainingJumpTime = 0;
                 } else {
-                    if (move.jump && remainingJumpTime > 0) {
-                        remainingJumpTime -= MICROTICK_DURATION;
-                        newY += SPEED / MICROTICKS_PER_TICK;
+                    if (willBeStanding && remainingJumpTime == 0 || onLadder) {
+                        if (move.jump) {
+                            newY += SPEED / MICROTICKS_PER_TICK;
+                            remainingJumpTime = JUMP_DURATION - MICROTICK_DURATION;
+                            if (onLadder(newX, newY)) {
+                                remainingJumpTime = 0;
+                            }
+                        }
                     } else {
-                        newY -= SPEED / MICROTICKS_PER_TICK;
-                        remainingJumpTime = 0;
+                        if (move.jump && remainingJumpTime > 0) {
+                            remainingJumpTime -= MICROTICK_DURATION;
+                            newY += SPEED / MICROTICKS_PER_TICK;
+                        } else {
+                            newY -= SPEED / MICROTICKS_PER_TICK;
+                            remainingJumpTime = 0;
+                        }
                     }
                 }
                 if (unitCollidesWithWall(map, newX, newY)) {
@@ -76,21 +86,30 @@ public class Simulator {
         return r;
     }
 
-    private boolean unitIsStanding(Point p) {
+    private boolean onLadder(double x, double y) {
+        return tileAtPoint(map, x, y) == LADDER || tileAtPoint(map, x, y + HEIGHT / 2) == LADDER;
+    }
+
+    private boolean canJump(Point p) {
         return pointIsStanding(p.x - WIDTH / 2, p.y, false)
                 || pointIsStanding(p.x + WIDTH / 2, p.y, false)
                 || pointIsStanding(p.x, p.y, true);
     }
 
+    private boolean unitIsStandingOnWall(double px, double py) {
+        return pointIsStandingOnWall(px - WIDTH / 2, py) && pointIsStandingOnWall(px + WIDTH / 2, py);
+    }
+
+    private boolean pointIsStandingOnWall(double px, double py) {
+        int x = (int) px;
+        int y = (int) py;
+        Tile below = map[x][y - 1];
+        return (below == WALL) && abs(py - (int) py) < 1e-9;
+    }
+
     private boolean pointIsStanding(double px, double py, boolean allowLadder) {
         int x = (int) px;
         int y = (int) py;
-        if (y == 0) { // hack
-            return true;
-        }
-        if (y >= map[0].length) { // todo уже давно вылез за потолок
-            return false;
-        }
         Tile below = map[x][y - 1];
         return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 1e-9;
     }
