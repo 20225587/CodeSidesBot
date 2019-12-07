@@ -75,7 +75,7 @@ public class Simulator {
                     if (newY < curState.position.y) {
                         newY = (int) newY + 1;
                     } else {
-                        // todo
+                        newY = (int) (newY + HEIGHT) - HEIGHT;
                     }
                 }
                 curState = new UnitState(new Point(newX, newY), remainingJumpTime);

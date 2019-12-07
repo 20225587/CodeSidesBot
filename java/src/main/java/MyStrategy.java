@@ -264,6 +264,7 @@ public class MyStrategy {
         }
         plans.add(plan(steps, new MoveAction(SPEED, false, false)));
         plans.add(plan(steps, new MoveAction(-SPEED, false, false)));
+        plans.add(plan(steps, new MoveAction(0, false, true)));
         return plans;
     }
 

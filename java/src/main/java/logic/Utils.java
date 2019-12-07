@@ -8,6 +8,9 @@ import static java.lang.Math.*;
 import static model.Tile.WALL;
 
 public class Utils {
+
+    private static double eps = 1e-9;
+
     public static double dist(Point a, Unit b) {
         return dist(a.x, a.y, b.getPosition().getX(), b.getPosition().getY());
     }
@@ -61,10 +64,10 @@ public class Utils {
     }
 
     public static boolean unitCollidesWithWall(Tile[][] map, double x, double y) {
-        return tileAtPoint(map, x + Simulator.WIDTH / 2, y) == WALL ||
+        return tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y) == WALL ||
                 tileAtPoint(map, x - Simulator.WIDTH / 2, y) == WALL ||
-                tileAtPoint(map, x + Simulator.WIDTH / 2, y + Simulator.HEIGHT) == WALL ||
-                tileAtPoint(map, x - Simulator.WIDTH / 2, y + Simulator.HEIGHT) == WALL;
+                tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y + Simulator.HEIGHT - eps) == WALL ||
+                tileAtPoint(map, x - Simulator.WIDTH / 2, y + Simulator.HEIGHT - eps) == WALL;
     }
 
     public static boolean bulletCollidesWithWall(Tile[][] map, Point p, double size) {

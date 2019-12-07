@@ -10,4 +10,13 @@ public class MoveAction {
         this.jump = jump;
         this.jumpDown = jumpDown;
     }
+
+    @Override
+    public String toString() {
+        return "MoveAction{" +
+                "speed=" + speed +
+                ", jump=" + jump +
+                ", jumpDown=" + jumpDown +
+                '}';
+    }
 }
