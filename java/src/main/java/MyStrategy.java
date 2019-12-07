@@ -256,15 +256,28 @@ public class MyStrategy {
 
     private List<Plan> genPlans(int steps) {
         List<Plan> plans = new ArrayList<>();
-        for (int standCnt = 0; standCnt <= steps; standCnt++) {
+        for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
             plans.add(
                     plan(standCnt, new MoveAction(0, false, false))
                             .add(steps - standCnt, new MoveAction(0, true, false))
             );
         }
-        plans.add(plan(steps, new MoveAction(SPEED, false, false)));
-        plans.add(plan(steps, new MoveAction(-SPEED, false, false)));
-        plans.add(plan(steps, new MoveAction(0, false, true)));
+        for (int upCnt = 0; upCnt <= steps; upCnt += 2) {
+            plans.add(
+                    plan(upCnt, new MoveAction(0, true, false))
+                            .add(steps - upCnt, new MoveAction(0, false, true))
+            );
+        }
+        for (double speed : new double[]{-SPEED, 0, SPEED}) {
+            for (boolean jump : new boolean[]{false, true}) {
+                for (boolean jumpDown : new boolean[]{false, true}) {
+                    if (jump && jumpDown) {
+                        continue;
+                    }
+                    plans.add(plan(steps, new MoveAction(speed, jump, jumpDown)));
+                }
+            }
+        }
         return plans;
     }
 
