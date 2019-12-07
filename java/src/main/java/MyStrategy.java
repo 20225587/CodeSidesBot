@@ -19,6 +19,7 @@ public class MyStrategy {
     public static final ColorFloat GREEN = new ColorFloat(0, 1, 0, 1);
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
     public static final double EXPLOSION_SIZE = 6;
+    public static final int HEALTHPACK_THRESHOLD = 75;
 
     final boolean fake;
     final boolean bazookaOnly = false;
@@ -124,10 +125,10 @@ public class MyStrategy {
     }
 
     private MoveAction move0(Unit enemy, LootBox targetBonus) {
-        Point targetPos = null;
-        if (targetBonus != null && targetBonus.getItem() instanceof Item.HealthPack) {
+        Point targetPos;
+        if (shouldGoToHealthPack(targetBonus)) {
             targetPos = heathPackTargetPoint(targetBonus);
-        } else if (targetBonus != null) {
+        } else if (targetBonus != null && targetBonus.getItem() instanceof Item.Weapon) {
             targetPos = new Point(targetBonus.getPosition());
         } else {
             targetPos = findShootingPosition(enemy);
@@ -158,6 +159,28 @@ public class MyStrategy {
             }
             return new MoveAction(getVelocity(targetPos), jump, jumpDown);
         }
+    }
+
+    private boolean shouldGoToHealthPack(LootBox targetBonus) {
+        if (targetBonus == null || !(targetBonus.getItem() instanceof Item.HealthPack)) {
+            return false;
+        }
+        if (me.getHealth() < HEALTHPACK_THRESHOLD) {
+            return true;
+        }
+        return getMyPlayer().getScore() > getEnemyPlayer().getScore();
+    }
+
+    Player getMyPlayer() {
+        return Stream.of(game.getPlayers())
+                .filter(p -> p.getId() == me.getPlayerId())
+                .findAny().get();
+    }
+
+    Player getEnemyPlayer() {
+        return Stream.of(game.getPlayers())
+                .filter(p -> p.getId() != me.getPlayerId())
+                .findAny().get();
     }
 
     private Point findShootingPosition(Unit enemy) {
@@ -302,7 +325,7 @@ public class MyStrategy {
 
     private Point heathPackTargetPoint(LootBox healthPack) {
         Point hpPos = new Point(healthPack.getPosition());
-        if (me.getHealth() < 75) {
+        if (me.getHealth() < HEALTHPACK_THRESHOLD) {
             return hpPos;
         }
         if ((int) me.getPosition().getY() != (int) healthPack.getPosition().getY()) {
