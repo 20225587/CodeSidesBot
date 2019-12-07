@@ -23,11 +23,11 @@ public class Simulator {
         this.map = map;
     }
 
-    public List<UnitState> simulate(UnitState state, List<MoveAction> moves) {
+    public List<UnitState> simulate(UnitState state, Plan plan) {
         UnitState curState = state;
         List<UnitState> r = new ArrayList<>();
         int tick = 0;
-        for (MoveAction move : moves) {
+        for (MoveAction move : plan.moves) {
             tick++;
             double curY = curState.position.y;
             double curX = curState.position.x;

@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.*;
+import static logic.Plan.*;
 import static logic.Simulator.*;
 import static model.Tile.*;
 import static logic.Utils.*;
@@ -81,11 +82,7 @@ public class MyStrategy {
         System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
     }
 
-    List<MoveAction> moves = Stream.concat(
-            Collections.nCopies(20, new MoveAction(-SPEED, false, false))
-                    .stream(),
-            Collections.nCopies(0, new MoveAction(0, false, false)).stream()
-    ).collect(Collectors.toList());
+    Plan testPlan = new Plan();
 
     private UnitAction testSimulation() {
         if (fake) {
@@ -96,8 +93,8 @@ public class MyStrategy {
         }
         UnitState state = new UnitState(me);
         System.out.println(state + ",");
-        simulator.simulate(state, moves);
-        MoveAction curAction = moves.get(game.getCurrentTick());
+        simulator.simulate(state, testPlan);
+        MoveAction curAction = testPlan.get(game.getCurrentTick());
         return new UnitAction(
                 toApiSpeed(curAction.speed),
                 curAction.jump,
@@ -226,7 +223,7 @@ public class MyStrategy {
     private MoveAction tryDodgeBullets(MoveAction move) { // returns null if not in danger or can't dodge
         UnitState state = new UnitState(me);
         int steps = 100;
-        List<UnitState> states = simulator.simulate(state, Collections.nCopies(steps, move));
+        List<UnitState> states = simulator.simulate(state, plan(steps, move));
         double dangerousDist = 0.5;
         double defaultDist = minDistToBulletOrExplosion(states);
         if (defaultDist > dangerousDist) {
@@ -238,11 +235,11 @@ public class MyStrategy {
                 debug.drawSquare(p, 0.1, RED);
             }
         }
-        List<List<MoveAction>> plans = genPlans(steps);
+        List<Plan> plans = genPlans(steps);
 
         double maxDist = 0;
-        List<MoveAction> bestPlan = null;
-        for (List<MoveAction> plan : plans) {
+        Plan bestPlan = null;
+        for (Plan plan : plans) {
             List<UnitState> dodgeStates = simulator.simulate(state, plan);
             double dist = minDistToBulletOrExplosion(dodgeStates);
             if (dist > maxDist) {
@@ -256,16 +253,16 @@ public class MyStrategy {
         return bestPlan.get(0);
     }
 
-    private List<List<MoveAction>> genPlans(int steps) {
-        List<List<MoveAction>> plans = new ArrayList<>();
+    private List<Plan> genPlans(int steps) {
+        List<Plan> plans = new ArrayList<>();
         for (int standCnt = 0; standCnt <= steps; standCnt++) {
-            plans.add(Stream.concat(
-                    Collections.nCopies(standCnt, new MoveAction(0, false, false)).stream(),
-                    Collections.nCopies(steps - standCnt, new MoveAction(0, true, false)).stream()
-            ).collect(Collectors.toList()));
+            plans.add(
+                    plan(standCnt, new MoveAction(0, false, false))
+                            .add(steps - standCnt, new MoveAction(0, true, false))
+            );
         }
-        plans.add(Collections.nCopies(steps, new MoveAction(SPEED, false, false)));
-        plans.add(Collections.nCopies(steps, new MoveAction(-SPEED, false, false)));
+        plans.add(plan(steps, new MoveAction(SPEED, false, false)));
+        plans.add(plan(steps, new MoveAction(-SPEED, false, false)));
         return plans;
     }
 
