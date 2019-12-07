@@ -14,7 +14,11 @@ public class Simulator {
     public static double SPEED = 1.0 / 6;
     public static double WIDTH = 0.9;
     public static double HEIGHT = 1.8;
-    static int JUMP_TICKS = 32;
+
+    private static int TICKS_PER_SECOND = 60;
+    private static int MICROTICKS_PER_TICK = 100;
+    private static double MICROTICK_DURATION = 1.0 / TICKS_PER_SECOND / MICROTICKS_PER_TICK;
+    private static double JUMP_DURATION = 0.55;
 
     private final Tile[][] map;
 
@@ -27,64 +31,45 @@ public class Simulator {
         List<UnitState> r = new ArrayList<>();
         int tick = 0;
         for (MoveAction move : plan.moves) {
-            double newX = curState.position.x;
-            double newY = curState.position.y;
-            double remainingJumpTime = curState.remainingJumpTime;
-            boolean wasStanding = unitIsStanding(curState.position);
+            for (int microtick = 0; microtick < MICROTICKS_PER_TICK; microtick++) {
+                double newX = curState.position.x;
+                double newY = curState.position.y;
+                double remainingJumpTime = curState.remainingJumpTime;
 
-            newX += move.speed;
-            if (unitCollidesWithWall(map, newX, newY)) {
-                if (move.speed > 0) {
-                    newX = (int) (newX + WIDTH / 2) - WIDTH / 2;
-                } else {
-                    newX = (int) (newX - WIDTH / 2) + 1 + WIDTH / 2;
-                }
-            }
-
-            if (wasStanding) {
-                if (move.jump) {
-                    newY += SPEED;
-                    remainingJumpTime = JUMP_TICKS / 60.0;
-                } else {
-                    if (!unitIsStanding(new Point(newX, newY))) {
-                        double delta;
-                        if (tileAtPoint(map, curState.position.x, curState.position.y - 1) == LADDER) {
-                            if (move.speed > 0) {
-                                delta = newX % 1;
-                            } else {
-                                delta = 1 - newX % 1;
-                            }
-                        } else {
-                            if (move.speed > 0) {
-                                delta = (newX - WIDTH / 2) % 1;
-                            } else {
-                                double rightBorder = newX + WIDTH / 2;
-                                delta = (1 - rightBorder % 1);
-                            }
-                        }
-                        double fallingTime = delta / abs(move.speed);
-                        newY -= fallingTime * SPEED;
+                newX += move.speed / MICROTICKS_PER_TICK;
+                if (unitCollidesWithWall(map, newX, newY)) {
+                    if (move.speed > 0) {
+                        newX = (int) (newX + WIDTH / 2) - WIDTH / 2;
+                    } else {
+                        newX = (int) (newX - WIDTH / 2) + 1 + WIDTH / 2;
                     }
                 }
-            } else {
-                if (move.jump && remainingJumpTime * 60.0 > 1) {
-                    remainingJumpTime -= 1.0 / 60;
-                    newY += SPEED;
-                } else if (move.jump && remainingJumpTime > 0) {
-                    double up = remainingJumpTime * 60 * SPEED;
-                    double down = (1.0 / 60 - remainingJumpTime) * 60 * SPEED;
-                    int afkMicroTicks = 2;
-                    newY += up - down + afkMicroTicks / 100.0 * SPEED;
-                    remainingJumpTime = 0;
+
+                boolean willBeStanding = unitIsStanding(new Point(newX, newY));
+
+                if (willBeStanding) {
+                    if (move.jump) {
+                        newY += SPEED / MICROTICKS_PER_TICK;
+                        remainingJumpTime = JUMP_DURATION - MICROTICK_DURATION;
+                    }
                 } else {
-                    remainingJumpTime = 0;
-                    newY -= SPEED;
+                    if (move.jump && remainingJumpTime > 0) {
+                        remainingJumpTime -= MICROTICK_DURATION;
+                        newY += SPEED / MICROTICKS_PER_TICK;
+                    } else {
+                        newY -= SPEED / MICROTICKS_PER_TICK;
+                        remainingJumpTime = 0;
+                    }
                 }
+                if (unitCollidesWithWall(map, newX, newY)) {
+                    if (newY < curState.position.y) {
+                        newY = (int) newY + 1;
+                    } else {
+                        // todo
+                    }
+                }
+                curState = new UnitState(new Point(newX, newY), remainingJumpTime);
             }
-            if (unitCollidesWithWall(map, newX, newY)) { // todo rework
-                newY = curState.position.y;
-            }
-            curState = new UnitState(new Point(newX, newY), remainingJumpTime);
             r.add(curState);
             tick++;
         }
@@ -107,7 +92,7 @@ public class Simulator {
             return false;
         }
         Tile below = map[x][y - 1];
-        return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 0.01;
+        return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 1e-9;
     }
 
     public List<Point> simulateBullet(Bullet bullet, int ticks) {

@@ -50,7 +50,7 @@ public class MyStrategy {
 
         //-------
 
-        if (true) {
+        /*if (true) {
             return testSimulation();
         }/**/
 
@@ -82,9 +82,8 @@ public class MyStrategy {
         System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
     }
 
-    Plan testPlan = plan(1, new MoveAction(0, false, false))
-            .add(10, new MoveAction(0, true, false))
-            .add(9, new MoveAction(0, false, false));
+    Plan testPlan = //plan(1, new MoveAction(0, false, false))
+            plan(17, new MoveAction(-SPEED, false, false));
 
     private UnitAction testSimulation() {
         if (fake) {

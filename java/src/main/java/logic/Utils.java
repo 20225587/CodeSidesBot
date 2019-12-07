@@ -56,6 +56,10 @@ public class Utils {
         return map[(int) x][(int) y];
     }
 
+    public static Tile tileAtPoint(Tile[][] map, Point p) {
+        return tileAtPoint(map, p.x, p.y);
+    }
+
     public static boolean unitCollidesWithWall(Tile[][] map, double x, double y) {
         return tileAtPoint(map, x + Simulator.WIDTH / 2, y) == WALL ||
                 tileAtPoint(map, x - Simulator.WIDTH / 2, y) == WALL ||
