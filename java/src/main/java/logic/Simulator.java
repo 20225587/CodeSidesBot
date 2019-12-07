@@ -14,7 +14,6 @@ public class Simulator {
     public static double SPEED = 1.0 / 6;
     public static double WIDTH = 0.9;
     public static double HEIGHT = 1.8;
-    public static final double WEIRD_SHIFT = SPEED / 100;
     static int JUMP_TICKS = 32;
 
     private final Tile[][] map;
@@ -28,63 +27,66 @@ public class Simulator {
         List<UnitState> r = new ArrayList<>();
         int tick = 0;
         for (MoveAction move : plan.moves) {
-            tick++;
-            double curY = curState.position.y;
-            double curX = curState.position.x;
+            double newX = curState.position.x;
+            double newY = curState.position.y;
             double remainingJumpTime = curState.remainingJumpTime;
             boolean wasStanding = unitIsStanding(curState.position);
 
-            curX += move.speed;
-            if (unitCollidesWithWall(map, curX, curY)) {
+            newX += move.speed;
+            if (unitCollidesWithWall(map, newX, newY)) {
                 if (move.speed > 0) {
-                    curX = (int) (curX + WIDTH / 2) - WIDTH / 2;
+                    newX = (int) (newX + WIDTH / 2) - WIDTH / 2;
                 } else {
-                    curX = (int) (curX - WIDTH / 2) + 1 + WIDTH / 2;
+                    newX = (int) (newX - WIDTH / 2) + 1 + WIDTH / 2;
                 }
             }
 
             if (wasStanding) {
                 if (move.jump) {
-                    curY += SPEED - WEIRD_SHIFT;
-                    remainingJumpTime = (JUMP_TICKS + 0.01) / 60.0;
+                    newY += SPEED;
+                    remainingJumpTime = JUMP_TICKS / 60.0;
                 } else {
-                    if (!unitIsStanding(new Point(curX, curY))) {
+                    if (!unitIsStanding(new Point(newX, newY))) {
                         double delta;
                         if (tileAtPoint(map, curState.position.x, curState.position.y - 1) == LADDER) {
                             if (move.speed > 0) {
-                                delta = curX % 1;
+                                delta = newX % 1;
                             } else {
-                                delta = 1 - curX % 1;
+                                delta = 1 - newX % 1;
                             }
                         } else {
                             if (move.speed > 0) {
-                                delta = (curX - WIDTH / 2) % 1;
+                                delta = (newX - WIDTH / 2) % 1;
                             } else {
-                                double rightBorder = curX + WIDTH / 2;
+                                double rightBorder = newX + WIDTH / 2;
                                 delta = (1 - rightBorder % 1);
                             }
                         }
                         double fallingTime = delta / abs(move.speed);
-                        curY -= fallingTime * SPEED;
+                        newY -= fallingTime * SPEED;
                     }
                 }
             } else {
-                if (move.jump && remainingJumpTime * 60.0 >= 1) {
+                if (move.jump && remainingJumpTime * 60.0 > 1) {
                     remainingJumpTime -= 1.0 / 60;
-                    curY += SPEED;
+                    newY += SPEED;
                 } else if (move.jump && remainingJumpTime > 0) {
+                    double up = remainingJumpTime * 60 * SPEED;
+                    double down = (1.0 / 60 - remainingJumpTime) * 60 * SPEED;
+                    int afkMicroTicks = 2;
+                    newY += up - down + afkMicroTicks / 100.0 * SPEED;
                     remainingJumpTime = 0;
-                    curY -= SPEED - 4 * WEIRD_SHIFT;
                 } else {
                     remainingJumpTime = 0;
-                    curY -= SPEED;
+                    newY -= SPEED;
                 }
             }
-            if (unitCollidesWithWall(map, curX, curY)) { // todo rework
-                curY = curState.position.y;
+            if (unitCollidesWithWall(map, newX, newY)) { // todo rework
+                newY = curState.position.y;
             }
-            curState = new UnitState(new Point(curX, curY), remainingJumpTime);
+            curState = new UnitState(new Point(newX, newY), remainingJumpTime);
             r.add(curState);
+            tick++;
         }
         return r;
     }
