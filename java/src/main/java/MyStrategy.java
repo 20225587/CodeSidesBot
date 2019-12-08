@@ -235,7 +235,13 @@ public class MyStrategy {
             }
             List<Point> bulletPositions = simulator.simulateBullet(bullet, steps);
             for (Point p : bulletPositions) {
-                debug.drawSquare(p, 0.1, RED);
+                debug.drawSquare(p, bullet.getSize(), RED);
+                if (bulletCollidesWithWall(map, p, bullet.getSize())) {
+                    if (bullet.getExplosionParams() != null) {
+                        debug.drawSquare(p, bullet.getExplosionParams().getRadius() * 2, new ColorFloat(1f, 0f, 0f, 0.5f));
+                    }
+                    break;
+                }
             }
         }
         List<Plan> plans = genPlans(steps);
