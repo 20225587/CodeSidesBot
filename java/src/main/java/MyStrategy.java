@@ -45,12 +45,12 @@ public class MyStrategy {
         this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
         if (game.getCurrentTick() == 0) {
-            simulator = new Simulator(map);
+            simulator = Simulator.real(map);
         }
 
         //-------
 
-        /*if (true) {
+        if (true) {
             return testSimulation();
         }/**/
 
@@ -83,7 +83,9 @@ public class MyStrategy {
     }
 
     Plan testPlan = plan(1, new MoveAction(0, false, false))
-            .add(60, new MoveAction(0, true, false));
+            .add(10, new MoveAction(0, true, false))
+            .add(10, new MoveAction(0, false, true))
+            ;
 
     private UnitAction testSimulation() {
         if (fake) {
@@ -279,7 +281,7 @@ public class MyStrategy {
                             .add(steps - upCnt, new MoveAction(0, false, true))
             );
         }
-        for (double speed : new double[]{-SPEED, 0, SPEED}) {
+        for (double speed : new double[]{-simulator.tickSpeed, 0, simulator.tickSpeed}) {
             for (boolean jump : new boolean[]{false, true}) {
                 for (boolean jumpDown : new boolean[]{false, true}) {
                     if (jump && jumpDown) {
@@ -494,11 +496,11 @@ public class MyStrategy {
 
     private double getVelocity(Point targetPos) {
         double r = targetPos.x - me.getPosition().getX();
-        if (r > SPEED) {
-            return SPEED;
+        if (r > simulator.tickSpeed) {
+            return simulator.tickSpeed;
         }
-        if (r < -SPEED) {
-            return -SPEED;
+        if (r < -simulator.tickSpeed) {
+            return -simulator.tickSpeed;
         }
         return r;
     }
