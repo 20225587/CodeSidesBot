@@ -230,6 +230,9 @@ public class MyStrategy {
             return null;
         }
         for (Bullet bullet : game.getBullets()) {
+            if (bullet.getPlayerId() == me.getPlayerId()) {
+                continue;
+            }
             List<Point> bulletPositions = simulator.simulateBullet(bullet, steps);
             for (Point p : bulletPositions) {
                 debug.drawSquare(p, 0.1, RED);

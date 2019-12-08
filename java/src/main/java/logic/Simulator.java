@@ -111,7 +111,7 @@ public class Simulator {
         int x = (int) px;
         int y = (int) py;
         Tile below = map[x][y - 1];
-        return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 1e-9;
+        return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 1e-8;
     }
 
     public List<Point> simulateBullet(Bullet bullet, int ticks) {
