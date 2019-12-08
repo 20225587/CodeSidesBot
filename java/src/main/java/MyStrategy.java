@@ -225,9 +225,8 @@ public class MyStrategy {
         UnitState state = new UnitState(me);
         int steps = 100;
         List<UnitState> states = simulator.simulate(state, plan(steps, move));
-        double dangerousDist = 0.5;
-        double defaultDist = minDistToBulletOrExplosion(states);
-        if (defaultDist > dangerousDist) {
+        double defaultDanger = dangerFactor(states);
+        if (defaultDanger <= 0) {
             return null;
         }
         for (Bullet bullet : game.getBullets()) {
@@ -238,19 +237,22 @@ public class MyStrategy {
         }
         List<Plan> plans = genPlans(steps);
 
-        double maxDist = 0;
+        double minDanger = Double.POSITIVE_INFINITY;
         Plan bestPlan = null;
         for (Plan plan : plans) {
             List<UnitState> dodgeStates = simulator.simulate(state, plan);
-            double dist = minDistToBulletOrExplosion(dodgeStates);
-            if (dist > maxDist) {
-                maxDist = dist;
+            double danger = dangerFactor(dodgeStates);
+            if (danger < minDanger) {
+                minDanger = danger;
                 bestPlan = plan;
             }
         }
-        if (maxDist <= defaultDist) {
+        if (minDanger >= defaultDanger) {
             return null;
         }
+        /*for (UnitState st : simulator.simulate(state, bestPlan)) {
+            debug.drawSquare(st.position, 0.1, GREEN);
+        }/**/
         return bestPlan.get(0);
     }
 
@@ -281,26 +283,51 @@ public class MyStrategy {
         return plans;
     }
 
-    private double minDistToBulletOrExplosion(List<UnitState> states) {
-        double minDist = Double.POSITIVE_INFINITY;
+    private double dangerFactor(List<UnitState> states) {
+        double minAllowedDist = 0.5;
+        double danger = 0;
         for (Bullet bullet : game.getBullets()) {
+            if (bullet.getPlayerId() == me.getPlayerId() && bullet.getWeaponType() != ROCKET_LAUNCHER) {
+                continue;
+            }
             List<Point> bulletPositions = simulator.simulateBullet(bullet, states.size());
+            double minDist = Double.POSITIVE_INFINITY;
+
+            ExplosionParams explosion = bullet.getExplosionParams();
             for (int i = 0; i < bulletPositions.size(); i++) {
                 Point bulletPos = bulletPositions.get(i);
                 Point myPos = states.get(i).position;
-                minDist = min(minDist, distToBullet(myPos, bulletPos, bullet.getSize()));
+                double dist = distToBullet(myPos, bulletPos, bullet.getSize());
+                minDist = min(minDist, dist);
+                if (dist == 0) {
+                    break;
+                }
                 if (bulletCollidesWithWall(map, bulletPos, bullet.getSize())) {
-                    if (bullet.getExplosionParams() != null) {
-                        minDist = min(
-                                minDist,
-                                distToBullet(myPos, bulletPos, bullet.getExplosionParams().getRadius() * 2)
-                        );
+                    if (explosion != null) {
+                        double distToExplosion = distToBullet(myPos, bulletPos, explosion.getRadius() * 2);
+                        danger += getDanger(minAllowedDist, distToExplosion, explosion.getDamage());
                     }
                     break;
                 }
             }
+
+            int damage = bullet.getDamage();
+            if (explosion != null) {
+                damage += explosion.getDamage();
+            }
+            danger += getDanger(minAllowedDist, minDist, damage);
         }
-        return minDist;
+        return danger;
+    }
+
+    private double getDanger(double minAllowedDist, double dist, int damage) {
+        if (dist == 0) {
+            return damage;
+        }
+        if (dist < minAllowedDist) {
+            return minAllowedDist - dist;
+        }
+        return 0;
     }
 
     private static double distToBullet(Point myPos, Point bulletPos, double size) {
