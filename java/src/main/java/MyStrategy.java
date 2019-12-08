@@ -182,7 +182,7 @@ public class MyStrategy {
     }
 
     private Point findShootingPosition(Unit enemy) {
-        double maxDist = 0;
+        double maxDist = Double.NEGATIVE_INFINITY;
         Point bestPoint = null;
         double myX = me.getPosition().getX();
         double enemyX = enemy.getPosition().getX();
