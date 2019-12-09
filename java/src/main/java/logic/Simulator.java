@@ -68,7 +68,7 @@ public class Simulator {
                 if (canJump && move.jump) {
                     newY += microtickSpeed;
                     remainingJumpTime -= microtickDuration;
-                } else if (!isStanding && !move.jump) {
+                } else if (!isStanding) {
                     newY -= microtickSpeed;
                     remainingJumpTime = 0;
                     canJump = false;
@@ -81,6 +81,10 @@ public class Simulator {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
+                } else if (remainingJumpTime <= 0) {
+                    canJump = false;
+                    canCancel = false;
+                    remainingJumpTime = 0;
                 }
 
                 if (unitCollidesWithWall(map, newX, newY)) {
