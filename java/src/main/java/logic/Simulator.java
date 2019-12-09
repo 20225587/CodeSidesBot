@@ -65,8 +65,11 @@ public class Simulator {
                 }
 
                 boolean isStanding = isStanding(newX, newY);
+                boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
 
-                if (canJump && move.jump) {
+                if (canMoveDown && move.jumpDown) {
+                    newY -= microtickSpeed;
+                } else if (canJump && move.jump) {
                     newY += microtickSpeed;
                     remainingJumpTime -= microtickDuration;
                 } else if (!isStanding) {
@@ -78,7 +81,7 @@ public class Simulator {
 
                 boolean willBeStanding = isStanding(newX, newY);
 
-                if (isStanding && willBeStanding) {
+                if ((isStanding && willBeStanding) || onLadder(newX, newY)) {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
