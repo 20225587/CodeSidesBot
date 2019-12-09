@@ -25,7 +25,7 @@ public class Simulator {
 
     private final Tile[][] map;
 
-    private Simulator(Tile[][] map, int ticksPerSecond, int microticksPerTick) {
+    public Simulator(Tile[][] map, int ticksPerSecond, int microticksPerTick) {
         this.map = map;
         this.ticksPerSecond = ticksPerSecond;
         this.microticksPerTick = microticksPerTick;

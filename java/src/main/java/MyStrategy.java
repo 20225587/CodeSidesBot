@@ -50,7 +50,7 @@ public class MyStrategy {
 
         //-------
 
-        /*if (true) {
+        if (true) {
             return testSimulation();
         }/**/
 
@@ -78,24 +78,19 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    private void printMap() {
-        System.out.println(Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}"));
-    }
+    Plan testPlan = plan(10, new MoveAction(0, true, false));
 
-    Plan testPlan = plan(1, new MoveAction(0, false, false))
-            .add(10, new MoveAction(0, true, false))
-            .add(10, new MoveAction(0, false, true));
+    List<UnitState> actualStates = new ArrayList<>();
 
     private UnitAction testSimulation() {
         if (fake) {
             return noop();
         }
-        if (game.getCurrentTick() == 0) {
-            printMap();
-        }
         UnitState state = new UnitState(me);
-        System.out.println(state + ",");
-        simulator.simulate(state, testPlan);
+        actualStates.add(state);
+        if (game.getCurrentTick() == testPlan.moves.size()) {
+            TestCasePrinter.print(map, testPlan, actualStates, game);
+        }
         MoveAction curAction = testPlan.get(game.getCurrentTick());
         return new UnitAction(
                 curAction.speed,

@@ -13,10 +13,9 @@ public class MoveAction {
 
     @Override
     public String toString() {
-        return "MoveAction{" +
-                "speed=" + speed +
-                ", jump=" + jump +
-                ", jumpDown=" + jumpDown +
-                '}';
+        return String.format(
+                "new MoveAction(%s,%s,%s)",
+                speed, jump, jumpDown
+        );
     }
 }
