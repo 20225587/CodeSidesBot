@@ -56,10 +56,14 @@ public class Utils {
     }
 
     public static boolean unitCollidesWithWall(Tile[][] map, double x, double y) {
-        return tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y) == WALL ||
-                tileAtPoint(map, x - Simulator.WIDTH / 2, y) == WALL ||
-                tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y + Simulator.HEIGHT - eps) == WALL ||
-                tileAtPoint(map, x - Simulator.WIDTH / 2, y + Simulator.HEIGHT - eps) == WALL;
+        return unitCollidesWith(map, x, y, WALL);
+    }
+
+    public static boolean unitCollidesWith(Tile[][] map, double x, double y, Tile tile) {
+        return tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y) == tile ||
+                tileAtPoint(map, x - Simulator.WIDTH / 2, y) == tile ||
+                tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y + Simulator.HEIGHT - eps) == tile ||
+                tileAtPoint(map, x - Simulator.WIDTH / 2, y + Simulator.HEIGHT - eps) == tile;
     }
 
     public static boolean bulletCollidesWithWall(Tile[][] map, Point p, double size) {

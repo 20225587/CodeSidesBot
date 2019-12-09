@@ -17,6 +17,7 @@ public class Simulator {
     private final static double EPS = 1e-9;
 
     private static final double JUMP_DURATION = 0.55;
+    private static final double JUMP_PAD_DURATION = 0.525;
 
     private final int ticksPerSecond;
     private final int microticksPerTick;
@@ -67,7 +68,9 @@ public class Simulator {
                 boolean isStanding = isStanding(newX, newY);
                 boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
 
-                if (canMoveDown && move.jumpDown) {
+                if (canJump && !canCancel) {
+                    newY += microtickSpeed * 2;
+                } else if (canMoveDown && move.jumpDown) {
                     newY -= microtickSpeed;
                 } else if (canJump && move.jump) {
                     newY += microtickSpeed;
@@ -81,7 +84,11 @@ public class Simulator {
 
                 boolean willBeStanding = isStanding(newX, newY);
 
-                if ((isStanding && willBeStanding) || onLadder(newX, newY)) {
+                if (unitCollidesWith(map, newX, newY, JUMP_PAD)) {
+                    remainingJumpTime = JUMP_PAD_DURATION;
+                    canJump = true;
+                    canCancel = false;
+                } else if ((isStanding && willBeStanding) || onLadder(newX, newY)) {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
