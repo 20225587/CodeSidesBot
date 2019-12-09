@@ -76,7 +76,7 @@ public class Simulator {
                 } else if (canJump && move.jump) {
                     newY += microtickSpeed;
                     remainingJumpTime -= microtickDuration;
-                } else if (!isStanding) {
+                } else if (!isStanding && !onLadder(newX, newY)) {
                     newY -= microtickSpeed;
                     remainingJumpTime = 0;
                     canJump = false;
@@ -85,11 +85,15 @@ public class Simulator {
 
                 boolean willBeStanding = isStanding(newX, newY);
 
-                if (unitCollidesWith(map, newX, newY, JUMP_PAD)) {
+                if (onLadder(newX, newY)) {
+                    canJump = true;
+                    canCancel = true;
+                    remainingJumpTime = JUMP_DURATION;
+                } else if (unitCollidesWith(map, newX, newY, JUMP_PAD)) {
                     remainingJumpTime = JUMP_PAD_DURATION;
                     canJump = true;
                     canCancel = false;
-                } else if ((isStanding && willBeStanding) || onLadder(newX, newY)) {
+                } else if (isStanding && willBeStanding) {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
