@@ -64,7 +64,7 @@ public class Simulator {
                     }
                 }
 
-                boolean isStanding = canJump(curState.position.x, curState.position.y);
+                boolean isStanding = isStanding(newX, newY);
 
                 if (canJump && move.jump) {
                     newY += microtickSpeed;
@@ -76,7 +76,7 @@ public class Simulator {
                     canCancel = false;
                 }
 
-                boolean willBeStanding = canJump(newX, newY);
+                boolean willBeStanding = isStanding(newX, newY);
 
                 if (isStanding && willBeStanding) {
                     canJump = true;
@@ -107,7 +107,7 @@ public class Simulator {
         return tileAtPoint(map, x, y) == LADDER || tileAtPoint(map, x, y + HEIGHT / 2) == LADDER;
     }
 
-    private boolean canJump(double px, double py) {
+    private boolean isStanding(double px, double py) {
         return pointIsStanding(px - WIDTH / 2, py, false)
                 || pointIsStanding(px + WIDTH / 2, py, false)
                 || pointIsStanding(px, py, true);

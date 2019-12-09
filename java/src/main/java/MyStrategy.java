@@ -1,17 +1,19 @@
 import logic.*;
 import model.*;
 
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.*;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.*;
-import static logic.Plan.*;
+import static logic.Plan.plan;
 import static logic.Simulator.*;
+import static logic.Utils.bulletCollidesWithWall;
+import static logic.Utils.dist;
 import static model.Tile.*;
-import static logic.Utils.*;
-import static model.WeaponType.*;
+import static model.WeaponType.ROCKET_LAUNCHER;
 
 public class MyStrategy {
 
@@ -78,8 +80,7 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    Plan testPlan = plan(1000, new MoveAction(-SPEED, false, false))
-            ;
+    Plan testPlan = plan(1000, new MoveAction(SPEED, false, false));
 
     List<UnitState> actualStates = new ArrayList<>();
 
