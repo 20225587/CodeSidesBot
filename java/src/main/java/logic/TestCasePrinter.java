@@ -64,6 +64,6 @@ public class TestCasePrinter {
                 }
             }
         }
-        Utils.printMap(map, new Point(1, 1));
+        Utils.printMap(map, new Point(15, 15));
     }
 }

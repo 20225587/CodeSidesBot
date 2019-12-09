@@ -107,7 +107,7 @@ public class MyStrategy {
     }
 
     private Plan genStressTestPlan() {
-        Random rnd = new Random(322);
+        Random rnd = new Random(323);
         Plan plan = new Plan();
         for (int i = 0; i < 50; i++) {
             int n = rnd.nextInt(20);

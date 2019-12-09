@@ -97,7 +97,7 @@ public class Simulator {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
-                } else if (remainingJumpTime <= 0) {
+                } else if (remainingJumpTime <= 0 || canCancel && move.jumpDown) {
                     canJump = false;
                     canCancel = false;
                     remainingJumpTime = 0;
