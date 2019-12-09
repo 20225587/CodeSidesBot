@@ -42,8 +42,8 @@ public class Simulator {
         return new Simulator(map, 6000, 1);
     }
 
-    public List<UnitState> simulate(UnitState state, Plan plan) {
-        UnitState curState = state;
+    public List<UnitState> simulate(UnitState startState, Plan plan) {
+        UnitState curState = startState;
         List<UnitState> r = new ArrayList<>();
         int tick = 0;
         for (MoveAction move : plan.moves) {
@@ -51,6 +51,8 @@ public class Simulator {
                 double newX = curState.position.x;
                 double newY = curState.position.y;
                 double remainingJumpTime = curState.remainingJumpTime;
+                boolean canJump = curState.canJump;
+                boolean canCancel = curState.canCancel;
 
                 newX += move.speed * microtickDuration;
                 if (unitCollidesWithWall(map, newX, newY)) {
@@ -61,32 +63,19 @@ public class Simulator {
                     }
                 }
 
-                boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
-                boolean willBeStanding = canJump(new Point(newX, newY));
-                boolean onLadder = onLadder(newX, newY);
-
-                if (move.jumpDown && canMoveDown) {
-                    newY -= microtickSpeed;
-                    remainingJumpTime = 0;
-                } else {
-                    if (willBeStanding && remainingJumpTime == 0 || onLadder) {
-                        if (move.jump) {
-                            newY += microtickSpeed;
-                            remainingJumpTime = JUMP_DURATION - microtickDuration;
-                            if (onLadder(newX, newY)) {
-                                remainingJumpTime = 0;
-                            }
-                        }
-                    } else {
-                        if (move.jump && remainingJumpTime > 0) {
-                            remainingJumpTime -= microtickDuration;
-                            newY += microtickSpeed;
-                        } else {
-                            newY -= microtickSpeed;
-                            remainingJumpTime = 0;
-                        }
-                    }
+                if (canJump && move.jump) {
+                    newY += microtickSpeed;
+                    remainingJumpTime -= microtickDuration;
                 }
+
+                boolean willBeStanding = canJump(new Point(newX, newY));
+
+                if (willBeStanding) {
+                    canJump = true;
+                    canCancel = true;
+                    remainingJumpTime = JUMP_DURATION;
+                }
+
                 if (unitCollidesWithWall(map, newX, newY)) {
                     if (newY < curState.position.y) {
                         newY = (int) newY + 1;
@@ -94,7 +83,7 @@ public class Simulator {
                         newY = (int) (newY + HEIGHT) - HEIGHT;
                     }
                 }
-                curState = new UnitState(new Point(newX, newY), remainingJumpTime);
+                curState = new UnitState(new Point(newX, newY), remainingJumpTime, canJump, canCancel);
             }
             r.add(curState);
             tick++;

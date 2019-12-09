@@ -45,11 +45,13 @@ public class UnitState {
     public boolean equals(Object o) {
         UnitState unitState = (UnitState) o;
         return Double.compare(unitState.remainingJumpTime, remainingJumpTime) == 0 &&
+                canJump == unitState.canJump &&
+                canCancel == unitState.canCancel &&
                 Objects.equals(position, unitState.position);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(position, remainingJumpTime);
+        return Objects.hash(position, remainingJumpTime, canJump, canCancel);
     }
 }
