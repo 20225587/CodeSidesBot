@@ -63,14 +63,21 @@ public class Simulator {
                     }
                 }
 
+                boolean isStanding = canJump(curState.position.x, curState.position.y);
+
                 if (canJump && move.jump) {
                     newY += microtickSpeed;
                     remainingJumpTime -= microtickDuration;
+                } else if (!isStanding && !move.jump) {
+                    newY -= microtickSpeed;
+                    remainingJumpTime = 0;
+                    canJump = false;
+                    canCancel = false;
                 }
 
-                boolean willBeStanding = canJump(new Point(newX, newY));
+                boolean willBeStanding = canJump(newX, newY);
 
-                if (willBeStanding) {
+                if (isStanding && willBeStanding) {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
@@ -95,10 +102,10 @@ public class Simulator {
         return tileAtPoint(map, x, y) == LADDER || tileAtPoint(map, x, y + HEIGHT / 2) == LADDER;
     }
 
-    private boolean canJump(Point p) {
-        return pointIsStanding(p.x - WIDTH / 2, p.y, false)
-                || pointIsStanding(p.x + WIDTH / 2, p.y, false)
-                || pointIsStanding(p.x, p.y, true);
+    private boolean canJump(double px, double py) {
+        return pointIsStanding(px - WIDTH / 2, py, false)
+                || pointIsStanding(px + WIDTH / 2, py, false)
+                || pointIsStanding(px, py, true);
     }
 
     private boolean unitIsStandingOnWall(double px, double py) {
