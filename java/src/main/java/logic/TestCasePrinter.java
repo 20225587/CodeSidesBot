@@ -7,7 +7,10 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
+
+import static model.Tile.*;
 
 public class TestCasePrinter {
     public static void print(Tile[][] map, Plan plan, List<UnitState> states, Game game) {
@@ -41,5 +44,26 @@ public class TestCasePrinter {
 
     private static String mapToString(Tile[][] map) {
         return Arrays.deepToString(map).replaceAll("\\[", "{").replaceAll("]", "}");
+    }
+
+    public static void main(String[] args) {
+        genStressTestMap();
+    }
+
+    private static void genStressTestMap() {
+        int n = 40;
+        int m = 30;
+        Random rnd = new Random();
+        Tile[][] map = new Tile[n][m];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (i == 0 || j == 0 || i == n - 1 || j == m - 1) {
+                    map[i][j] = WALL;
+                } else {
+                    map[i][j] = Tile.values()[rnd.nextInt(values().length)];
+                }
+            }
+        }
+        Utils.printMap(map, new Point(1, 1));
     }
 }

@@ -80,8 +80,7 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    Plan testPlan = plan(1000, new MoveAction(SPEED, false, true))
-            ;
+    Plan testPlan = genStressTestPlan();
 
     List<UnitState> actualStates = new ArrayList<>();
 
@@ -105,6 +104,28 @@ public class MyStrategy {
                 false,
                 false
         );
+    }
+
+    private Plan genStressTestPlan() {
+        Random rnd = new Random(322);
+        Plan plan = new Plan();
+        for (int i = 0; i < 50; i++) {
+            int n = rnd.nextInt(20);
+            double speed = rnd.nextDouble() * 20 - 10;
+            boolean jump, jumpDown;
+            int jumpType = rnd.nextInt(3);
+            if (jumpType == 0) {
+                jump = jumpDown = false;
+            } else if (jumpType == 1) {
+                jump = true;
+                jumpDown = false;
+            } else {
+                jump = false;
+                jumpDown = true;
+            }
+            plan.add(n, new MoveAction(speed, jump, jumpDown));
+        }
+        return plan;
     }
 
     private MoveAction move(Unit enemy, LootBox targetBonus) {

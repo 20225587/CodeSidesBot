@@ -5,6 +5,7 @@ import model.Unit;
 import model.Vec2Double;
 
 import static java.lang.Math.*;
+import static logic.Simulator.*;
 import static model.Tile.WALL;
 
 public class Utils {
@@ -60,10 +61,12 @@ public class Utils {
     }
 
     public static boolean unitCollidesWith(Tile[][] map, double x, double y, Tile tile) {
-        return tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y) == tile ||
-                tileAtPoint(map, x - Simulator.WIDTH / 2, y) == tile ||
-                tileAtPoint(map, x + Simulator.WIDTH / 2 - eps, y + Simulator.HEIGHT - eps) == tile ||
-                tileAtPoint(map, x - Simulator.WIDTH / 2, y + Simulator.HEIGHT - eps) == tile;
+        return tileAtPoint(map, x + WIDTH / 2 - eps, y) == tile ||
+                tileAtPoint(map, x - WIDTH / 2, y) == tile ||
+                tileAtPoint(map, x + WIDTH / 2 - eps, y + HEIGHT - eps) == tile ||
+                tileAtPoint(map, x - WIDTH / 2, y + HEIGHT - eps) == tile ||
+                tileAtPoint(map, x - WIDTH / 2, y + HEIGHT / 2) == tile ||
+                tileAtPoint(map, x + WIDTH / 2 - eps, y + HEIGHT - eps) == tile;
     }
 
     public static boolean bulletCollidesWithWall(Tile[][] map, Point p, double size) {
@@ -71,5 +74,34 @@ public class Utils {
                 tileAtPoint(map, p.x - size / 2, p.y + size / 2) == WALL ||
                 tileAtPoint(map, p.x + size / 2, p.y - size / 2) == WALL ||
                 tileAtPoint(map, p.x + size / 2, p.y + size / 2) == WALL;
+    }
+
+    public static char tileToChar(Tile tile) {
+        switch (tile) {
+            case EMPTY:
+                return '.';
+            case WALL:
+                return '#';
+            case PLATFORM:
+                return '^';
+            case LADDER:
+                return 'H';
+            case JUMP_PAD:
+                return 'T';
+        }
+        throw new RuntimeException();
+    }
+
+    static void printMap(Tile[][] map, Point start) {
+        for (int y = map[0].length - 1; y >= 0; y--) {
+            for (int x = 0; x < map.length; x++) {
+                char ch = tileToChar(map[x][y]);
+                if (x == (int) start.x && y == (int) start.y) {
+                    ch = 'P';
+                }
+                System.out.print(ch);
+            }
+            System.out.println();
+        }
     }
 }

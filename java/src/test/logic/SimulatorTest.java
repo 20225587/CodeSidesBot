@@ -338,32 +338,4 @@ public class SimulatorTest {
         }
     }
 
-    void printMap(Tile[][] map, UnitState start) {
-        for (int y = map[0].length - 1; y >= 0; y--) {
-            for (int x = 0; x < map.length; x++) {
-                char ch = tileToChar(map[x][y]);
-                if (x == (int) start.position.x && y == (int) start.position.y) {
-                    ch = 'P';
-                }
-                System.out.print(ch);
-            }
-            System.out.println();
-        }
-    }
-
-    char tileToChar(Tile tile) {
-        switch (tile) {
-            case EMPTY:
-                return '.';
-            case WALL:
-                return '#';
-            case PLATFORM:
-                return '^';
-            case LADDER:
-                return 'H';
-            case JUMP_PAD:
-                return 'T';
-        }
-        throw new RuntimeException();
-    }
 }
