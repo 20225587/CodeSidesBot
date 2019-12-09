@@ -78,7 +78,7 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    Plan testPlan = plan(10000, new MoveAction(0, true, false))
+    Plan testPlan = plan(100, new MoveAction(SPEED, true, false))
             ;
 
     List<UnitState> actualStates = new ArrayList<>();
