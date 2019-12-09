@@ -9,7 +9,7 @@ import java.util.List;
 import static model.Tile.*;
 import static org.testng.Assert.assertEquals;
 
-public class SimpleSimulatorTest {
+public class SimulatorTest {
 
     @Test
     void jump() {

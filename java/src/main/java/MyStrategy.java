@@ -80,7 +80,7 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    Plan testPlan = genStressTestPlan();
+    Plan testPlan = plan(5, new MoveAction(0, false, true));
 
     List<UnitState> actualStates = new ArrayList<>();
 
@@ -107,7 +107,7 @@ public class MyStrategy {
     }
 
     private Plan genStressTestPlan() {
-        Random rnd = new Random(323);
+        Random rnd = new Random(32434);
         Plan plan = new Plan();
         for (int i = 0; i < 50; i++) {
             int n = rnd.nextInt(20);

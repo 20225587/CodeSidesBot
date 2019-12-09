@@ -64,6 +64,8 @@ public class TestCasePrinter {
                 }
             }
         }
-        Utils.printMap(map, new Point(15, 15));
+        int startX = 15, startY = 15;
+        map[startX][startY + 1] = EMPTY;
+        Utils.printMap(map, new Point(startX, startY));
     }
 }

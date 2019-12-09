@@ -83,6 +83,14 @@ public class Simulator {
                     canCancel = false;
                 }
 
+                if (unitCollidesWithWall(map, newX, newY)) {
+                    if (newY < curState.position.y) {
+                        newY = (int) newY + 1;
+                    } else {
+                        newY = (int) (newY + HEIGHT) - HEIGHT;
+                    }
+                }
+
                 boolean willBeStanding = isStanding(newX, newY);
 
                 if (onLadder(newX, newY)) {
@@ -103,13 +111,6 @@ public class Simulator {
                     remainingJumpTime = 0;
                 }
 
-                if (unitCollidesWithWall(map, newX, newY)) {
-                    if (newY < curState.position.y) {
-                        newY = (int) newY + 1;
-                    } else {
-                        newY = (int) (newY + HEIGHT) - HEIGHT;
-                    }
-                }
                 curState = new UnitState(new Point(newX, newY), remainingJumpTime, canJump, canCancel);
             }
             r.add(curState);
