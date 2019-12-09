@@ -50,7 +50,7 @@ public class MyStrategy {
 
         //-------
 
-        if (true) {
+        /*if (true) {
             return testSimulation();
         }/**/
 
@@ -63,7 +63,7 @@ public class MyStrategy {
         boolean swap = me.getWeapon() != null && me.getWeapon().getTyp() == ROCKET_LAUNCHER;
 
         return new UnitAction(
-                toApiSpeed(moveAction.speed),
+                moveAction.speed,
                 moveAction.jump,
                 moveAction.jumpDown,
                 aimDir,
@@ -84,8 +84,7 @@ public class MyStrategy {
 
     Plan testPlan = plan(1, new MoveAction(0, false, false))
             .add(10, new MoveAction(0, true, false))
-            .add(10, new MoveAction(0, false, true))
-            ;
+            .add(10, new MoveAction(0, false, true));
 
     private UnitAction testSimulation() {
         if (fake) {
@@ -99,7 +98,7 @@ public class MyStrategy {
         simulator.simulate(state, testPlan);
         MoveAction curAction = testPlan.get(game.getCurrentTick());
         return new UnitAction(
-                toApiSpeed(curAction.speed),
+                curAction.speed,
                 curAction.jump,
                 curAction.jumpDown,
                 new Vec2Double(0, 0),
@@ -281,7 +280,7 @@ public class MyStrategy {
                             .add(steps - upCnt, new MoveAction(0, false, true))
             );
         }
-        for (double speed : new double[]{-simulator.tickSpeed, 0, simulator.tickSpeed}) {
+        for (double speed : new double[]{-SPEED, 0, SPEED}) {
             for (boolean jump : new boolean[]{false, true}) {
                 for (boolean jumpDown : new boolean[]{false, true}) {
                     if (jump && jumpDown) {
@@ -422,20 +421,21 @@ public class MyStrategy {
     }
 
     private boolean canExplodeMyselfWithBazooka() {
-        if (me.getWeapon().getTyp() != ROCKET_LAUNCHER) {
+        Weapon weapon = me.getWeapon();
+        if (weapon.getTyp() != ROCKET_LAUNCHER) {
             return false;
         }
         debug.showSpread(me);
-        double angle = me.getWeapon().getLastAngle();
-        double spread = me.getWeapon().getSpread();
+        double angle = weapon.getLastAngle() == null ? 0 : weapon.getLastAngle();
+        double spread = weapon.getSpread();
         return canExplodeMyselfWithBazooka(angle + spread) || canExplodeMyselfWithBazooka(angle - spread);
     }
 
     private boolean canExplodeMyselfWithBazooka(double angle) {
         Point bulletPos = muzzlePoint(me);
         BulletParams bullet = me.getWeapon().getParams().getBullet();
-        double speed = fromApiSpeed(bullet.getSpeed());
-        Point delta = Point.dir(angle).mult(speed);
+        double speedPerTick = simulator.toTickSpeed(bullet.getSpeed());
+        Point delta = Point.dir(angle).mult(speedPerTick);
         while (true) {
             bulletPos = bulletPos.add(delta);
             if (bulletCollidesWithWall(map, bulletPos, bullet.getSize())) {
@@ -497,12 +497,12 @@ public class MyStrategy {
     private double getVelocity(Point targetPos) {
         double r = targetPos.x - me.getPosition().getX();
         if (r > simulator.tickSpeed) {
-            return simulator.tickSpeed;
+            return SPEED;
         }
         if (r < -simulator.tickSpeed) {
-            return -simulator.tickSpeed;
+            return -SPEED;
         }
-        return r;
+        return simulator.fromTickSpeed(r);
     }
 
     private Vec2Double aim(Unit enemy) {

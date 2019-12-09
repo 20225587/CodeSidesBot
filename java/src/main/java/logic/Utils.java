@@ -47,14 +47,6 @@ public class Utils {
         return dist(a.x, a.y, b.x, b.y);
     }
 
-    public static double toApiSpeed(double speed) {
-        return speed * 60;
-    }
-
-    public static double fromApiSpeed(double speed) {
-        return speed / 60;
-    }
-
     public static Tile tileAtPoint(Tile[][] map, double x, double y) {
         return map[(int) x][(int) y];
     }

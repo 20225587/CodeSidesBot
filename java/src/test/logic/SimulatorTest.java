@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static logic.Plan.plan;
+import static logic.Simulator.SPEED;
 import static logic.Utils.dist;
 import static model.Tile.*;
 import static org.testng.Assert.assertEquals;
@@ -138,7 +139,7 @@ public class SimulatorTest {
                 new UnitState(new Point(2.5499999999999945, 1.0), 0.0),
                 new UnitState(new Point(2.5499999999999945, 1.0), 0.0)
         );
-        Plan moves = plan(2, new MoveAction(simulator.tickSpeed, false, false));
+        Plan moves = plan(2, new MoveAction(SPEED, false, false));
         List<UnitState> actual = simulator.simulate(start, moves);
 
         check(expected, actual);
@@ -168,7 +169,7 @@ public class SimulatorTest {
                 new UnitState(new Point(1.4500000000001525, 1.2833333333333168), 0.0),
                 new UnitState(new Point(1.4500000000001525, 1.1166666666666463), 0.0)
         );
-        Plan moves = plan(17, new MoveAction(-simulator.tickSpeed, false, false));
+        Plan moves = plan(17, new MoveAction(-SPEED, false, false));
         List<UnitState> actual = simulator.simulate(start, moves);
 
         check(expected, actual);
@@ -198,7 +199,7 @@ public class SimulatorTest {
                 new UnitState(new Point(1.4500000000001525, 1.0000000009999999), 0.0),
                 new UnitState(new Point(1.4500000000001525, 1.0000000009999999), 0.0)
         );
-        Plan moves = plan(17, new MoveAction(-simulator.tickSpeed, false, false));
+        Plan moves = plan(17, new MoveAction(-SPEED, false, false));
         List<UnitState> actual = simulator.simulate(start, moves);
 
         check(expected, actual);

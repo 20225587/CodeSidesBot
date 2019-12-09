@@ -11,7 +11,7 @@ import static logic.Utils.*;
 import static model.Tile.*;
 
 public class Simulator {
-    public static final double SPEED_PER_SECOND = 10;
+    public static final double SPEED = 10;
     public static final double WIDTH = 0.9;
     public static final double HEIGHT = 1.8;
 
@@ -30,7 +30,7 @@ public class Simulator {
         this.ticksPerSecond = ticksPerSecond;
         this.microticksPerTick = microticksPerTick;
         microtickDuration = 1.0 / ticksPerSecond / microticksPerTick;
-        microtickSpeed = SPEED_PER_SECOND / ticksPerSecond / microticksPerTick;
+        microtickSpeed = SPEED / ticksPerSecond / microticksPerTick;
         tickSpeed = microtickSpeed * microticksPerTick;
     }
 
@@ -52,7 +52,7 @@ public class Simulator {
                 double newY = curState.position.y;
                 double remainingJumpTime = curState.remainingJumpTime;
 
-                newX += move.speed / microticksPerTick;
+                newX += move.speed * microtickDuration;
                 if (unitCollidesWithWall(map, newX, newY)) {
                     if (move.speed > 0) {
                         newX = (int) (newX + WIDTH / 2) - WIDTH / 2;
@@ -130,12 +130,20 @@ public class Simulator {
         return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 1e-8;
     }
 
+    public double toTickSpeed(double speed) {
+        return speed / ticksPerSecond;
+    }
+
+    public double fromTickSpeed(double speed) {
+        return speed * ticksPerSecond;
+    }
+
     public List<Point> simulateBullet(Bullet bullet, int ticks) {
         List<Point> r = new ArrayList<>();
         Point curPos = new Point(bullet.getPosition());
         Point speed = new Point(
-                fromApiSpeed(bullet.getVelocity().getX()),
-                fromApiSpeed(bullet.getVelocity().getY())
+                toTickSpeed(bullet.getVelocity().getX()),
+                toTickSpeed(bullet.getVelocity().getY())
         );
         for (int i = 0; i < ticks; i++) {
             curPos = curPos.add(speed);
