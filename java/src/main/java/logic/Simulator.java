@@ -11,10 +11,10 @@ import static logic.Utils.*;
 import static model.Tile.*;
 
 public class Simulator {
-    public static final double SPEED = 10;
-    public static final double WIDTH = 0.9;
-    public static final double HEIGHT = 1.8;
-    private static double EPS = 5.329070518200751e-15;
+    public final static double SPEED = 10;
+    public final static double WIDTH = 0.9;
+    public final static double HEIGHT = 1.8;
+    private final static double EPS = 1e-9;
 
     private static final double JUMP_DURATION = 0.55;
 
@@ -58,9 +58,9 @@ public class Simulator {
                 newX += move.speed * microtickDuration;
                 if (unitCollidesWithWall(map, newX, newY)) {
                     if (move.speed > 0) {
-                        newX = (int) (newX + WIDTH / 2) - WIDTH / 2 - EPS;
+                        newX = max(curState.position.x, (int) (newX + WIDTH / 2) - WIDTH / 2 - EPS);
                     } else {
-                        newX = (int) (newX - WIDTH / 2) + 1 + WIDTH / 2 + EPS;
+                        newX = min(curState.position.x, (int) (newX - WIDTH / 2) + 1 + WIDTH / 2 + EPS);
                     }
                 }
 
