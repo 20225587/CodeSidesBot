@@ -70,6 +70,7 @@ public class Simulator {
 
                 if (canJump && !canCancel) {
                     newY += microtickSpeed * 2;
+                    remainingJumpTime -= microtickDuration;
                 } else if (canMoveDown && move.jumpDown) {
                     newY -= microtickSpeed;
                 } else if (canJump && move.jump) {
