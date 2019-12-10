@@ -151,7 +151,7 @@ public class MyStrategy {
             return new MoveAction(0, false, false);
         } else {
             debug.drawLine(new Point(me), targetPos, WHITE);
-            List<Plan> plans = genMovementPlans();
+            Set<Plan> plans = genMovementPlans();
             double minDist = Double.POSITIVE_INFINITY;
             UnitState start = new UnitState(me);
             Plan bestPlan = null;
@@ -175,32 +175,31 @@ public class MyStrategy {
     }
 
     private double evalDist(List<UnitState> states, int[][] dfsDist) {
-        return states.stream()
-                .map(s -> {
-                    double minDist = Double.POSITIVE_INFINITY;
-                    double x = s.position.x;
-                    double y = s.position.y;
-                    for (Dir dir : dirs) {
-                        int toX = (int) x + dir.dx;
-                        int toY = (int) y + dir.dy;
-                        double distToNeighbour;
-                        if (dir == RIGHT) {
-                            distToNeighbour = toX - x;
-                        } else if (dir == LEFT) {
-                            distToNeighbour = x - (int) x;
-                        } else if (dir == UP) {
-                            distToNeighbour = toY - y;
-                        } else if (dir == DOWN) {
-                            distToNeighbour = y - (int) y;
-                        } else {
-                            throw new RuntimeException();
-                        }
-                        minDist = min(minDist, dfsDist[toX][toY] + distToNeighbour);
-                    }
-                    return minDist;
-                })
-                .min(Comparator.naturalOrder())
-                .get();
+        double minDist = Double.POSITIVE_INFINITY;
+        for (int i = 0; i < states.size(); i++) {
+            UnitState state = states.get(i);
+            double x = state.position.x;
+            double y = state.position.y;
+            for (Dir dir : dirs) {
+                int toX = (int) x + dir.dx;
+                int toY = (int) y + dir.dy;
+                double distToNeighbour;
+                if (dir == RIGHT) {
+                    distToNeighbour = toX - x;
+                } else if (dir == LEFT) {
+                    distToNeighbour = x - (int) x;
+                } else if (dir == UP) {
+                    distToNeighbour = toY - y;
+                } else if (dir == DOWN) {
+                    distToNeighbour = y - (int) y;
+                } else {
+                    throw new RuntimeException();
+                }
+                double dist = dfsDist[toX][toY] + distToNeighbour + i * simulator.tickSpeed * 0.1;
+                minDist = min(minDist, dist);
+            }
+        }
+        return minDist;
     }
 
     private void print(int[][] dfsDist) {
@@ -253,23 +252,26 @@ public class MyStrategy {
         return dist;
     }
 
-    private List<Plan> genMovementPlans() {
+    private Set<Plan> genMovementPlans() {
         int steps = 50;
-        List<Plan> plans = new ArrayList<>();
+        Set<Plan> plans = new LinkedHashSet<>();
         plans.add(plan(1, 0, false, false).add(steps - 1, 0, true, false));
-        for (int upCnt = 0; upCnt <= steps; upCnt += 2) {
-            plans.add(
-                    plan(upCnt, new MoveAction(0, true, false))
-                            .add(steps - upCnt, new MoveAction(0, false, true))
-            );
-        }
-        for (double speed : new double[]{-SPEED, 0, SPEED}) {
-            for (boolean jump : new boolean[]{false, true}) {
-                for (boolean jumpDown : new boolean[]{false, true}) {
-                    if (jump && jumpDown) {
-                        continue;
+        for (int moveCnt = 0; moveCnt <= steps; moveCnt += 10) {
+            for (double speed : new double[]{-SPEED, 0, SPEED}) {
+                for (boolean jump : new boolean[]{false, true}) {
+                    for (boolean jumpDown : new boolean[]{false, true}) {
+                        if (jump && jumpDown) {
+                            continue;
+                        }
+                        plans.add(
+                                plan(moveCnt, new MoveAction(speed, jump, jumpDown))
+                                        .add(steps - moveCnt, new MoveAction(0, jump, jumpDown))
+                        );
+                        plans.add(
+                                plan(moveCnt, speed, false, false)
+                                        .add(steps - moveCnt, speed, jump, jumpDown)
+                        );
                     }
-                    plans.add(plan(steps, new MoveAction(speed, jump, jumpDown)));
                 }
             }
         }
@@ -277,7 +279,7 @@ public class MyStrategy {
         return plans;
     }
 
-    private void verifyLength(List<Plan> plans, int steps) {
+    private void verifyLength(Set<Plan> plans, int steps) {
         if (!plans.stream().allMatch(p -> p.moves.size() == steps)) {
             throw new RuntimeException("wrong plan length");
         }
@@ -390,7 +392,7 @@ public class MyStrategy {
                 }
             }
         }
-        List<Plan> plans = genDodgePlans(steps);
+        Set<Plan> plans = genDodgePlans(steps);
 
         double minDanger = Double.POSITIVE_INFINITY;
         Plan bestPlan = null;
@@ -411,8 +413,8 @@ public class MyStrategy {
         return bestPlan.get(0);
     }
 
-    private List<Plan> genDodgePlans(int steps) {
-        List<Plan> plans = new ArrayList<>();
+    private Set<Plan> genDodgePlans(int steps) {
+        Set<Plan> plans = new LinkedHashSet<>();
         for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
             plans.add(
                     plan(standCnt, new MoveAction(0, false, false))

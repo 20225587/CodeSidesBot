@@ -4,6 +4,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Plan {
@@ -47,5 +48,16 @@ public class Plan {
             this.n = n;
             this.move = move;
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        Plan plan = (Plan) o;
+        return moves.equals(plan.moves);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(moves);
     }
 }
