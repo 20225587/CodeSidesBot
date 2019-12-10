@@ -62,10 +62,11 @@ public class TestCasePrinter {
                     tile = WALL;
                 } else {
                     tile = Tile.values()[rnd.nextInt(values().length)];
-                    if (tile == WALL) {
-                        if (rnd.nextBoolean()) {
-                            tile = Tile.values()[rnd.nextInt(values().length)];
-                        }
+                    if (tile == JUMP_PAD) {
+                        tile = PLATFORM;
+//                        if (rnd.nextBoolean()) {
+//                            tile = Tile.values()[rnd.nextInt(values().length)];
+//                        }
                     }
                 }
                 map[i][j] = tile;

@@ -52,7 +52,7 @@ public class MyStrategy {
 
         //-------
 
-        if (true) {
+        /*if (true) {
             return testSimulation();
         }/**/
 
@@ -80,7 +80,7 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    Plan testPlan = plan(5, new MoveAction(0, false, true));
+    Plan testPlan = genStressTestPlan();
 
     List<UnitState> actualStates = new ArrayList<>();
 
@@ -107,10 +107,10 @@ public class MyStrategy {
     }
 
     private Plan genStressTestPlan() {
-        Random rnd = new Random(32434);
+        Random rnd = new Random(34343434);
         Plan plan = new Plan();
         for (int i = 0; i < 50; i++) {
-            int n = rnd.nextInt(20);
+            int n = 20+rnd.nextInt(20);
             double speed = rnd.nextDouble() * 20 - 10;
             boolean jump, jumpDown;
             int jumpType = rnd.nextInt(3);
