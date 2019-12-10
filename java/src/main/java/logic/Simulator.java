@@ -91,6 +91,9 @@ public class Simulator {
                 if (unitCollidesWithWall(map, newX, newY) || platformOrLadderCollision(map, newX, newY, curState, move)) {
                     if (newY > curState.position.y) {
                         newY = max(curState.position.y, (int) (newY + HEIGHT) - HEIGHT - EPS);
+                        canJump = false;
+                        canCancel = false;
+                        remainingJumpTime = 0;
                     } else {
                         newY = min(curState.position.y, (int) newY + 1 + EPS);
                         onGround = true;
