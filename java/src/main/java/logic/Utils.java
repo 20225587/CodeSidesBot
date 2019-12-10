@@ -92,7 +92,7 @@ public class Utils {
         throw new RuntimeException();
     }
 
-    static void printMap(Tile[][] map, Point start) {
+    public static void printMap(Tile[][] map, Point start) {
         for (int y = map[0].length - 1; y >= 0; y--) {
             for (int x = 0; x < map.length; x++) {
                 char ch = tileToChar(map[x][y]);

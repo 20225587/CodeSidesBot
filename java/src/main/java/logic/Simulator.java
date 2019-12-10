@@ -148,6 +148,16 @@ public class Simulator {
         return tileAtPoint(map, x, y) == LADDER || tileAtPoint(map, x, y + HEIGHT / 2) == LADDER;
     }
 
+    public double clampSpeed(double speed) {
+        if (speed > SPEED) {
+            return SPEED;
+        }
+        if (speed < -SPEED) {
+            return -SPEED;
+        }
+        return speed;
+    }
+
     private boolean isStanding(double px, double py) {
         return pointIsStanding(px - WIDTH / 2, py, false)
                 || pointIsStanding(px + WIDTH / 2, py, false)

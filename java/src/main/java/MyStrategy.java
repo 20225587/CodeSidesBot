@@ -9,8 +9,7 @@ import static java.lang.Math.*;
 import static logic.Dir.*;
 import static logic.Plan.plan;
 import static logic.Simulator.*;
-import static logic.Utils.bulletCollidesWithWall;
-import static logic.Utils.dist;
+import static logic.Utils.*;
 import static model.Tile.*;
 import static model.WeaponType.ROCKET_LAUNCHER;
 
@@ -54,9 +53,9 @@ public class MyStrategy {
         /*if (true) {
             return testSimulation();
         }/**/
-        if (fake) {
+        /*if (fake) {
             return noop();
-        }
+        }/**/
 
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus(enemy);
@@ -132,7 +131,6 @@ public class MyStrategy {
 
     private MoveAction move(Unit enemy, LootBox targetBonus) {
         MoveAction move = move0(enemy, targetBonus);
-        System.out.println(move);
         /*if (!fake) {
             move = new MoveAction(0, false, false);
         } else {
@@ -151,7 +149,7 @@ public class MyStrategy {
             return new MoveAction(0, false, false);
         } else {
             debug.drawLine(new Point(me), targetPos, WHITE);
-            Set<Plan> plans = genMovementPlans();
+            Set<Plan> plans = genMovementPlans(targetPos);
             double minDist = Double.POSITIVE_INFINITY;
             UnitState start = new UnitState(me);
             Plan bestPlan = null;
@@ -160,7 +158,7 @@ public class MyStrategy {
             //print(dfsDist);
             for (Plan plan : plans) {
                 List<UnitState> states = simulator.simulate(start, plan);
-                double dist = evalDist(states, dfsDist);
+                double dist = evalDist(states, dfsDist, targetPos);
                 if (dist < minDist) {
                     minDist = dist;
                     bestStates = states;
@@ -174,29 +172,36 @@ public class MyStrategy {
         }
     }
 
-    private double evalDist(List<UnitState> states, int[][] dfsDist) {
+    private double evalDist(List<UnitState> states, int[][] dfsDist, Point target) {
         double minDist = Double.POSITIVE_INFINITY;
         for (int i = 0; i < states.size(); i++) {
             UnitState state = states.get(i);
             double x = state.position.x;
             double y = state.position.y;
-            for (Dir dir : dirs) {
-                int toX = (int) x + dir.dx;
-                int toY = (int) y + dir.dy;
-                double distToNeighbour;
-                if (dir == RIGHT) {
-                    distToNeighbour = toX - x;
-                } else if (dir == LEFT) {
-                    distToNeighbour = x - (int) x;
-                } else if (dir == UP) {
-                    distToNeighbour = toY - y;
-                } else if (dir == DOWN) {
-                    distToNeighbour = y - (int) y;
-                } else {
-                    throw new RuntimeException();
+            int cx = (int) x;
+            int cy = (int) y;
+
+            if (dfsDist[cx][cy] == 0) {
+                minDist = min(minDist, max(abs(x - target.x), abs(y - target.y)));
+            } else {
+                for (Dir dir : dirs) {
+                    int toX = cx + dir.dx;
+                    int toY = cy + dir.dy;
+                    double distToNeighbour;
+                    if (dir == RIGHT) {
+                        distToNeighbour = toX - x;
+                    } else if (dir == LEFT) {
+                        distToNeighbour = x - cx;
+                    } else if (dir == UP) {
+                        distToNeighbour = toY - y;
+                    } else if (dir == DOWN) {
+                        distToNeighbour = y - cy;
+                    } else {
+                        throw new RuntimeException();
+                    }
+                    double dist = dfsDist[toX][toY] + distToNeighbour + i * simulator.tickSpeed * 0.1 + 1;
+                    minDist = min(minDist, dist);
                 }
-                double dist = dfsDist[toX][toY] + distToNeighbour + i * simulator.tickSpeed * 0.1;
-                minDist = min(minDist, dist);
             }
         }
         return minDist;
@@ -238,6 +243,9 @@ public class MyStrategy {
                     }
                     int toX = cur.x + dx;
                     int toY = cur.y + dy;
+                    if (!inside(toX, toY)) {
+                        continue;
+                    }
                     if (map[toX][toY] == WALL) {
                         continue;
                     }
@@ -252,10 +260,19 @@ public class MyStrategy {
         return dist;
     }
 
-    private Set<Plan> genMovementPlans() {
-        int steps = 50;
+    private boolean inside(int x, int y) {
+        return x >= 0 && x < map.length && y >= 0 && y < map[0].length;
+    }
+
+    private Set<Plan> genMovementPlans(Point targetPos) {
+        int steps = 25;
         Set<Plan> plans = new LinkedHashSet<>();
+
+        double speedToTarget = simulator.clampSpeed(simulator.fromTickSpeed(targetPos.x - me.getPosition().getX()));
+        plans.add(plan(1, speedToTarget, false, false).add(steps - 1, 0, false, false));
+
         plans.add(plan(1, 0, false, false).add(steps - 1, 0, true, false));
+
         for (int moveCnt = 0; moveCnt <= steps; moveCnt += 10) {
             for (double speed : new double[]{-SPEED, 0, SPEED}) {
                 for (boolean jump : new boolean[]{false, true}) {
@@ -286,8 +303,9 @@ public class MyStrategy {
     }
 
     private Point chooseTargetPosition(Unit enemy, LootBox targetBonus) {
-        if (true) {
-            return new Point(map.length - 2, 1);
+        /*if (true) {
+            //return new Point(map.length - 2, 1);
+            return new Point(3.33, 10);
         }/**/
         Point targetPos;
         if (shouldGoToHealthPack(targetBonus)) {
