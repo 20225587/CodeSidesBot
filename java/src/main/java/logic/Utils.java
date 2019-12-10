@@ -64,7 +64,7 @@ public class Utils {
                 tileAtPoint(map, x + WIDTH / 2, y + HEIGHT) == tile ||
                 tileAtPoint(map, x - WIDTH / 2, y + HEIGHT) == tile ||
                 tileAtPoint(map, x - WIDTH / 2, y + HEIGHT / 2) == tile ||
-                tileAtPoint(map, x + WIDTH / 2, y + HEIGHT) == tile;
+                tileAtPoint(map, x + WIDTH / 2, y + HEIGHT / 2) == tile;
     }
 
     public static boolean bulletCollidesWithWall(Tile[][] map, Point p, double size) {
