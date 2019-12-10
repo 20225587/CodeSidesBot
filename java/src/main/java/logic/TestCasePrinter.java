@@ -55,19 +55,27 @@ public class TestCasePrinter {
         int m = 30;
         Random rnd = new Random();
         Tile[][] map = new Tile[n][m];
+        List<Tile> proportions = Arrays.asList(
+                WALL,
+                EMPTY,
+                EMPTY,
+                EMPTY,
+                PLATFORM,
+                PLATFORM,
+                PLATFORM,
+                PLATFORM,
+                PLATFORM,
+                LADDER,
+                LADDER,
+                LADDER
+        );
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
                 Tile tile;
                 if (i == 0 || j == 0 || i == n - 1 || j == m - 1) {
                     tile = WALL;
                 } else {
-                    tile = Tile.values()[rnd.nextInt(values().length)];
-                    if (tile == JUMP_PAD) {
-                        tile = PLATFORM;
-//                        if (rnd.nextBoolean()) {
-//                            tile = Tile.values()[rnd.nextInt(values().length)];
-//                        }
-                    }
+                    tile = proportions.get(rnd.nextInt(proportions.size()));
                 }
                 map[i][j] = tile;
             }
