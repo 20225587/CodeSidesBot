@@ -10,8 +10,6 @@ import static model.Tile.WALL;
 
 public class Utils {
 
-    private static double eps = 1e-9;
-
     public static double dist(Point a, Unit b) {
         return dist(a.x, a.y, b.getPosition().getX(), b.getPosition().getY());
     }
@@ -61,12 +59,12 @@ public class Utils {
     }
 
     public static boolean unitCollidesWith(Tile[][] map, double x, double y, Tile tile) {
-        return tileAtPoint(map, x + WIDTH / 2 - eps, y) == tile ||
+        return tileAtPoint(map, x + WIDTH / 2, y) == tile ||
                 tileAtPoint(map, x - WIDTH / 2, y) == tile ||
-                tileAtPoint(map, x + WIDTH / 2 - eps, y + HEIGHT - eps) == tile ||
-                tileAtPoint(map, x - WIDTH / 2, y + HEIGHT - eps) == tile ||
+                tileAtPoint(map, x + WIDTH / 2, y + HEIGHT) == tile ||
+                tileAtPoint(map, x - WIDTH / 2, y + HEIGHT) == tile ||
                 tileAtPoint(map, x - WIDTH / 2, y + HEIGHT / 2) == tile ||
-                tileAtPoint(map, x + WIDTH / 2 - eps, y + HEIGHT - eps) == tile;
+                tileAtPoint(map, x + WIDTH / 2, y + HEIGHT) == tile;
     }
 
     public static boolean bulletCollidesWithWall(Tile[][] map, Point p, double size) {

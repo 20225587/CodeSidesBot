@@ -20,7 +20,7 @@ public class Simulator {
     private static final double JUMP_PAD_DURATION = 0.525;
 
     private final int ticksPerSecond;
-    private final int microticksPerTick;
+    public final int microticksPerTick;
     private final double microtickDuration;
     private final double microtickSpeed;
     public final double tickSpeed;
