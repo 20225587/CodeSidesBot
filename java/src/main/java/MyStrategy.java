@@ -110,7 +110,7 @@ public class MyStrategy {
         Random rnd = new Random(34343434);
         Plan plan = new Plan();
         for (int i = 0; i < 50; i++) {
-            int n = 20+rnd.nextInt(20);
+            int n = 20 + rnd.nextInt(20);
             double speed = rnd.nextDouble() * 20 - 10;
             boolean jump, jumpDown;
             int jumpType = rnd.nextInt(3);
@@ -186,6 +186,10 @@ public class MyStrategy {
         if (me.getHealth() < HEALTHPACK_THRESHOLD) {
             return true;
         }
+        return iAmWinning();
+    }
+
+    private boolean iAmWinning() {
         return getMyPlayer().getScore() > getEnemyPlayer().getScore();
     }
 
@@ -202,6 +206,9 @@ public class MyStrategy {
     }
 
     private Point findShootingPosition(Unit enemy) {
+        if (game.getCurrentTick() > game.getProperties().getMaxTickCount() * 0.75 && !iAmWinning()) {
+            return new Point(enemy);
+        }
         double maxDist = Double.NEGATIVE_INFINITY;
         Point bestPoint = null;
         double myX = me.getPosition().getX();
