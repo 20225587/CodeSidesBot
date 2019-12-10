@@ -1,8 +1,6 @@
 import logic.*;
 import model.*;
 
-import java.io.FileWriter;
-import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -55,6 +53,9 @@ public class MyStrategy {
         /*if (true) {
             return testSimulation();
         }/**/
+        if (fake) {
+            return noop();
+        }
 
         Unit enemy = chooseEnemy();
         LootBox targetBonus = chooseTargetBonus(enemy);
@@ -143,6 +144,94 @@ public class MyStrategy {
     }
 
     private MoveAction move0(Unit enemy, LootBox targetBonus) {
+        Point targetPos = chooseTargetPosition(enemy, targetBonus);
+        if (targetPos == null) {
+            return new MoveAction(0, false, false);
+        } else {
+            debug.drawLine(new Point(me), targetPos, WHITE);
+            List<Plan> plans = genMovementPlans();
+            double minDist = Double.POSITIVE_INFINITY;
+            UnitState start = new UnitState(me);
+            Plan bestPlan = null;
+            int[][] dfsDist = dfs(targetPos);
+            print(dfsDist);
+            for (Plan plan : plans) {
+                List<UnitState> states = simulator.simulate(start, plan);
+                double dist = evalDist(states, dfsDist);
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestPlan = plan;
+                }
+            }
+            return bestPlan.get(0);
+        }
+    }
+
+    private double evalDist(List<UnitState> states, int[][] dfsDist) {
+        return states.stream()
+                .map(s -> dfsDist[(int) s.position.x][(int) s.position.y])
+                .min(Comparator.naturalOrder())
+                .get();
+    }
+
+    private void print(int[][] dfsDist) {
+        for (int y = map[0].length - 1; y >= 0; y--) {
+            for (int x = 0; x < map.length; x++) {
+                String s;
+                if (map[x][y] == WALL) {
+                    s = "#";
+                } else {
+                    s = String.valueOf(dfsDist[x][y]);
+                }
+                System.out.print(s + "\t");
+            }
+            System.out.println();
+        }
+    }
+
+    int[][] dfs(Point start) {
+        int[][] dist = new int[map.length][map[0].length];
+        final int inf = (int) 1e9;
+        for (int i = 0; i < map.length; i++) {
+            for (int j = 0; j < map[i].length; j++) {
+                dist[i][j] = inf;
+            }
+        }
+        Queue<Cell> q = new ArrayDeque<>();
+        Cell startCell = new Cell(start);
+        q.add(startCell);
+        dist[startCell.x][startCell.y] = 0;
+        while (!q.isEmpty()) {
+            Cell cur = q.remove();
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (abs(dx) + abs(dy) != 1) {
+                        continue;
+                    }
+                    int toX = cur.x + dx;
+                    int toY = cur.y + dy;
+                    if (map[toX][toY] == WALL) {
+                        continue;
+                    }
+                    if (dist[toX][toY] != inf) {
+                        continue;
+                    }
+                    dist[toX][toY] = dist[cur.x][cur.y] + 1;
+                    q.add(new Cell(toX, toY));
+                }
+            }
+        }
+        return dist;
+    }
+
+    private List<Plan> genMovementPlans() {
+        return genDodgePlans(50);
+    }
+
+    private Point chooseTargetPosition(Unit enemy, LootBox targetBonus) {
+        /*if (true) {
+            return new Point(map.length - 2, 1);
+        }/**/
         Point targetPos;
         if (shouldGoToHealthPack(targetBonus)) {
             targetPos = heathPackTargetPoint(targetBonus);
@@ -151,32 +240,7 @@ public class MyStrategy {
         } else {
             targetPos = findShootingPosition(enemy);
         }
-        if (targetPos == null) {
-            return new MoveAction(0, false, false);
-        } else {
-            debug.drawLine(new Point(me), targetPos, WHITE);
-            double myY = me.getPosition().getY();
-            double myX = me.getPosition().getX();
-
-            boolean jump = targetPos.y > myY;
-            if ((int) targetPos.x > (int) myX && tileAtPoint(myX + 1, myY) == WALL) {
-                jump = true;
-            }
-            if ((int) targetPos.x < (int) myX && tileAtPoint(myX - 1, myY) == WALL) {
-                jump = true;
-            }
-            int platform = findPlatformAboveFloor();
-            if (jump && platform != -1 && !enoughTimeToGetTo(platform)) {
-                jump = false;
-            }
-            boolean jumpDown;
-            if (jump) {
-                jumpDown = false;
-            } else {
-                jumpDown = (int) targetPos.x == (int) myX && (int) targetPos.y < (int) myY;
-            }
-            return new MoveAction(getVelocity(targetPos), jump, jumpDown);
-        }
+        return targetPos;
     }
 
     private boolean shouldGoToHealthPack(LootBox targetBonus) {
@@ -271,7 +335,7 @@ public class MyStrategy {
                 }
             }
         }
-        List<Plan> plans = genPlans(steps);
+        List<Plan> plans = genDodgePlans(steps);
 
         double minDanger = Double.POSITIVE_INFINITY;
         Plan bestPlan = null;
@@ -292,7 +356,7 @@ public class MyStrategy {
         return bestPlan.get(0);
     }
 
-    private List<Plan> genPlans(int steps) {
+    private List<Plan> genDodgePlans(int steps) {
         List<Plan> plans = new ArrayList<>();
         for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
             plans.add(
