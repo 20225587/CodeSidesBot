@@ -173,35 +173,41 @@ public class MyStrategy {
     }
 
     private double evalDist(List<UnitState> states, int[][] dfsDist, Point target) {
-        double minDist = Double.POSITIVE_INFINITY;
+        double r = Double.POSITIVE_INFINITY;
         for (int i = 0; i < states.size(); i++) {
-            UnitState state = states.get(i);
-            double x = state.position.x;
-            double y = state.position.y;
-            int cx = (int) x;
-            int cy = (int) y;
+            double dist = evaluate(dfsDist, target, states.get(i)) + i * simulator.tickSpeed * 0.1;
+            r = min(r, dist);
+        }
+        return r;
+    }
 
-            if (dfsDist[cx][cy] == 0) {
-                minDist = min(minDist, max(abs(x - target.x), abs(y - target.y)));
-            } else {
-                for (Dir dir : dirs) {
-                    int toX = cx + dir.dx;
-                    int toY = cy + dir.dy;
-                    double distToNeighbour;
-                    if (dir == RIGHT) {
-                        distToNeighbour = toX - x;
-                    } else if (dir == LEFT) {
-                        distToNeighbour = x - cx;
-                    } else if (dir == UP) {
-                        distToNeighbour = toY - y;
-                    } else if (dir == DOWN) {
-                        distToNeighbour = y - cy;
-                    } else {
-                        throw new RuntimeException();
-                    }
-                    double dist = dfsDist[toX][toY] + distToNeighbour + i * simulator.tickSpeed * 0.1 + 1;
-                    minDist = min(minDist, dist);
+    private double evaluate(int[][] dfsDist, Point target, UnitState state) {
+        double minDist = Double.POSITIVE_INFINITY;
+        double x = state.position.x;
+        double y = state.position.y;
+        int cx = (int) x;
+        int cy = (int) y;
+
+        if (dfsDist[cx][cy] == 0) {
+            minDist = min(minDist, max(abs(x - target.x), abs(y - target.y)));
+        } else {
+            for (Dir dir : dirs) {
+                int toX = cx + dir.dx;
+                int toY = cy + dir.dy;
+                double distToNeighbour;
+                if (dir == RIGHT) {
+                    distToNeighbour = toX - x;
+                } else if (dir == LEFT) {
+                    distToNeighbour = x - cx;
+                } else if (dir == UP) {
+                    distToNeighbour = toY - y;
+                } else if (dir == DOWN) {
+                    distToNeighbour = y - cy;
+                } else {
+                    throw new RuntimeException();
                 }
+                double dist = dfsDist[toX][toY] + distToNeighbour + 1;
+                minDist = min(minDist, dist);
             }
         }
         return minDist;
