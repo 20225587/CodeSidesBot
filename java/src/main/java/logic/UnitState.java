@@ -10,12 +10,14 @@ public class UnitState {
     public final double remainingJumpTime;
     public final boolean canJump;
     public final boolean canCancel;
+    public final MissingFlags missingFlags;
 
     public UnitState(Point position, double remainingJumpTime) {
         this.position = position;
         this.remainingJumpTime = remainingJumpTime;
         this.canJump = false;
         this.canCancel = false;
+        missingFlags = null;
     }
 
     public UnitState(Point position, double remainingJumpTime, boolean canJump, boolean canCancel) {
@@ -23,6 +25,7 @@ public class UnitState {
         this.remainingJumpTime = remainingJumpTime;
         this.canJump = canJump;
         this.canCancel = canCancel;
+        missingFlags = null;
     }
 
     public UnitState(Unit me) {
@@ -31,6 +34,7 @@ public class UnitState {
         this.remainingJumpTime = jumpState.getMaxTime();
         this.canJump = jumpState.isCanJump();
         this.canCancel = jumpState.isCanCancel();
+        missingFlags = new MissingFlags(me);
     }
 
     @Override

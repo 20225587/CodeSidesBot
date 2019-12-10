@@ -65,7 +65,7 @@ public class Simulator {
                     }
                 }
 
-                boolean isStanding = isStanding(newX, newY);
+                boolean wasOnGround = isStanding(newX, newY) && canJump;
                 boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
 
                 if (canJump && !canCancel) {
@@ -76,23 +76,23 @@ public class Simulator {
                 } else if (canJump && move.jump) {
                     newY += microtickSpeed;
                     remainingJumpTime -= microtickDuration;
-                } else if (!isStanding && !onLadder(newX, newY)) {
+                } else if (!wasOnGround && !onLadder(newX, newY)) {
                     newY -= microtickSpeed;
                     remainingJumpTime = 0;
                     canJump = false;
                     canCancel = false;
                 }
 
+                boolean onGround = wasOnGround && isStanding(newX, newY);
+
                 if (unitCollidesWithWall(map, newX, newY) || platformCollision(map, newX, newY, curState, move)) {
                     if (newY > curState.position.y) {
                         newY = max(curState.position.y, (int) (newY + HEIGHT) - HEIGHT - EPS);
                     } else {
                         newY = min(curState.position.y, (int) newY + 1 + EPS);
+                        onGround = true;
                     }
                 }
-
-                boolean willBeStanding = isStanding(newX, newY);
-                boolean onPlatform = unitOnPlatform(newX, newY) && !move.jumpDown;
 
                 if (onLadder(newX, newY)) {
                     canJump = true;
@@ -102,7 +102,7 @@ public class Simulator {
                     remainingJumpTime = JUMP_PAD_DURATION;
                     canJump = true;
                     canCancel = false;
-                } else if ((isStanding || onPlatform) && willBeStanding) {
+                } else if (onGround) {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
@@ -166,6 +166,9 @@ public class Simulator {
     private boolean pointIsStanding(double px, double py, boolean allowLadder) {
         int x = (int) px;
         int y = (int) py;
+        if (y == 0) {
+            return true;
+        }
         Tile below = map[x][y - 1];
         return (below == PLATFORM || below == WALL || allowLadder && below == LADDER) && abs(py - (int) py) < 1e-8;
     }
