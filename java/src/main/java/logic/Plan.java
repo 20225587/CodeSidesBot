@@ -14,10 +14,18 @@ public class Plan {
         return new Plan().add(n, move);
     }
 
+    public static Plan plan(int n, double speed, boolean jump, boolean jumpDown) {
+        return new Plan().add(n, new MoveAction(speed, jump, jumpDown));
+    }
+
     public Plan add(int n, MoveAction move) {
         moves.addAll(Collections.nCopies(n, move));
         history.add(new HistoryRecord(n, move));
         return this;
+    }
+
+    public Plan add(int n, double speed, boolean jump, boolean jumpDown) {
+        return add(n, new MoveAction(speed, jump, jumpDown));
     }
 
     public MoveAction get(int index) {

@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.*;
+import static logic.Dir.*;
 import static logic.Plan.plan;
 import static logic.Simulator.*;
 import static logic.Utils.bulletCollidesWithWall;
@@ -131,6 +132,7 @@ public class MyStrategy {
 
     private MoveAction move(Unit enemy, LootBox targetBonus) {
         MoveAction move = move0(enemy, targetBonus);
+        System.out.println(move);
         /*if (!fake) {
             move = new MoveAction(0, false, false);
         } else {
@@ -153,15 +155,20 @@ public class MyStrategy {
             double minDist = Double.POSITIVE_INFINITY;
             UnitState start = new UnitState(me);
             Plan bestPlan = null;
+            List<UnitState> bestStates = null;
             int[][] dfsDist = dfs(targetPos);
-            print(dfsDist);
+            //print(dfsDist);
             for (Plan plan : plans) {
                 List<UnitState> states = simulator.simulate(start, plan);
                 double dist = evalDist(states, dfsDist);
                 if (dist < minDist) {
                     minDist = dist;
+                    bestStates = states;
                     bestPlan = plan;
                 }
+            }
+            for (UnitState state : bestStates) {
+                debug.drawSquare(state.position, 0.1, GREEN);
             }
             return bestPlan.get(0);
         }
@@ -169,7 +176,29 @@ public class MyStrategy {
 
     private double evalDist(List<UnitState> states, int[][] dfsDist) {
         return states.stream()
-                .map(s -> dfsDist[(int) s.position.x][(int) s.position.y])
+                .map(s -> {
+                    double minDist = Double.POSITIVE_INFINITY;
+                    double x = s.position.x;
+                    double y = s.position.y;
+                    for (Dir dir : dirs) {
+                        int toX = (int) x + dir.dx;
+                        int toY = (int) y + dir.dy;
+                        double distToNeighbour;
+                        if (dir == RIGHT) {
+                            distToNeighbour = toX - x;
+                        } else if (dir == LEFT) {
+                            distToNeighbour = x - (int) x;
+                        } else if (dir == UP) {
+                            distToNeighbour = toY - y;
+                        } else if (dir == DOWN) {
+                            distToNeighbour = y - (int) y;
+                        } else {
+                            throw new RuntimeException();
+                        }
+                        minDist = min(minDist, dfsDist[toX][toY] + distToNeighbour);
+                    }
+                    return minDist;
+                })
                 .min(Comparator.naturalOrder())
                 .get();
     }
@@ -225,11 +254,37 @@ public class MyStrategy {
     }
 
     private List<Plan> genMovementPlans() {
-        return genDodgePlans(50);
+        int steps = 50;
+        List<Plan> plans = new ArrayList<>();
+        plans.add(plan(1, 0, false, false).add(steps - 1, 0, true, false));
+        for (int upCnt = 0; upCnt <= steps; upCnt += 2) {
+            plans.add(
+                    plan(upCnt, new MoveAction(0, true, false))
+                            .add(steps - upCnt, new MoveAction(0, false, true))
+            );
+        }
+        for (double speed : new double[]{-SPEED, 0, SPEED}) {
+            for (boolean jump : new boolean[]{false, true}) {
+                for (boolean jumpDown : new boolean[]{false, true}) {
+                    if (jump && jumpDown) {
+                        continue;
+                    }
+                    plans.add(plan(steps, new MoveAction(speed, jump, jumpDown)));
+                }
+            }
+        }
+        verifyLength(plans, steps);
+        return plans;
+    }
+
+    private void verifyLength(List<Plan> plans, int steps) {
+        if (!plans.stream().allMatch(p -> p.moves.size() == steps)) {
+            throw new RuntimeException("wrong plan length");
+        }
     }
 
     private Point chooseTargetPosition(Unit enemy, LootBox targetBonus) {
-        /*if (true) {
+        if (true) {
             return new Point(map.length - 2, 1);
         }/**/
         Point targetPos;
@@ -380,6 +435,7 @@ public class MyStrategy {
                 }
             }
         }
+        verifyLength(plans, steps);
         return plans;
     }
 
