@@ -57,11 +57,18 @@ public class TestCasePrinter {
         Tile[][] map = new Tile[n][m];
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
+                Tile tile;
                 if (i == 0 || j == 0 || i == n - 1 || j == m - 1) {
-                    map[i][j] = WALL;
+                    tile = WALL;
                 } else {
-                    map[i][j] = Tile.values()[rnd.nextInt(values().length)];
+                    tile = Tile.values()[rnd.nextInt(values().length)];
+                    if (tile == WALL) {
+                        if (rnd.nextBoolean()) {
+                            tile = Tile.values()[rnd.nextInt(values().length)];
+                        }
+                    }
                 }
+                map[i][j] = tile;
             }
         }
         int startX = 15, startY = 15;

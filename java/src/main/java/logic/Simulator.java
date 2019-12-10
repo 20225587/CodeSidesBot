@@ -84,10 +84,10 @@ public class Simulator {
                 }
 
                 if (unitCollidesWithWall(map, newX, newY)) {
-                    if (newY < curState.position.y) {
-                        newY = (int) newY + 1;
+                    if (newY > curState.position.y) {
+                        newY = max(curState.position.y, (int) (newY + HEIGHT) - HEIGHT - EPS);
                     } else {
-                        newY = (int) (newY + HEIGHT) - HEIGHT;
+                        newY = min(curState.position.y, (int) newY + 1 + EPS);
                     }
                 }
 

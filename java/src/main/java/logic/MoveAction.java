@@ -6,6 +6,9 @@ public class MoveAction {
     public final boolean jumpDown;
 
     public MoveAction(double speed, boolean jump, boolean jumpDown) {
+        if (jump && jumpDown) {
+            throw new RuntimeException();
+        }
         this.speed = speed;
         this.jump = jump;
         this.jumpDown = jumpDown;
