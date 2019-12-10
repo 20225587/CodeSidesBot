@@ -80,7 +80,7 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    Plan testPlan = genStressTestPlan();
+    Plan testPlan;//genStressTestPlan();
 
     List<UnitState> actualStates = new ArrayList<>();
 
@@ -243,7 +243,7 @@ public class MyStrategy {
 
     private MoveAction tryDodgeBullets(MoveAction move) { // returns null if not in danger or can't dodge
         UnitState state = new UnitState(me);
-        int steps = 100;
+        int steps = 50;
         List<UnitState> states = simulator.simulate(state, plan(steps, move));
         double defaultDanger = dangerFactor(states);
         if (defaultDanger <= 0) {
