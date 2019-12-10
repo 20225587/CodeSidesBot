@@ -83,7 +83,7 @@ public class Simulator {
                     canCancel = false;
                 }
 
-                if (unitCollidesWithWall(map, newX, newY)) {
+                if (unitCollidesWithWall(map, newX, newY) || platformCollision(map, newX, newY, curState, move)) {
                     if (newY > curState.position.y) {
                         newY = max(curState.position.y, (int) (newY + HEIGHT) - HEIGHT - EPS);
                     } else {
@@ -92,6 +92,7 @@ public class Simulator {
                 }
 
                 boolean willBeStanding = isStanding(newX, newY);
+                boolean onPlatform = unitOnPlatform(newX, newY) && !move.jumpDown;
 
                 if (onLadder(newX, newY)) {
                     canJump = true;
@@ -101,7 +102,7 @@ public class Simulator {
                     remainingJumpTime = JUMP_PAD_DURATION;
                     canJump = true;
                     canCancel = false;
-                } else if (isStanding && willBeStanding) {
+                } else if ((isStanding || onPlatform) && willBeStanding) {
                     canJump = true;
                     canCancel = true;
                     remainingJumpTime = JUMP_DURATION;
@@ -117,6 +118,28 @@ public class Simulator {
             tick++;
         }
         return r;
+    }
+
+    private boolean unitOnPlatform(double px, double py) {
+        return pointOnPlatform(px - WIDTH / 2, py)
+                || pointOnPlatform(px + WIDTH / 2, py);
+    }
+
+    private boolean pointOnPlatform(double px, double py) {
+        int x = (int) px;
+        int y = (int) py;
+        Tile below = map[x][y - 1];
+        return below == PLATFORM && abs(py - (int) py) < 1e-8;
+    }
+
+    private boolean platformCollision(Tile[][] map, double newX, double newY, UnitState curState, MoveAction move) {
+        if (move.jumpDown) {
+            return false;
+        }
+        if ((int) newY >= (int) curState.position.y) {
+            return false;
+        }
+        return tileAtPoint(map, newX - WIDTH / 2, newY) == PLATFORM || tileAtPoint(map, newX + WIDTH / 2, newY) == PLATFORM;
     }
 
     private boolean onLadder(double x, double y) {
