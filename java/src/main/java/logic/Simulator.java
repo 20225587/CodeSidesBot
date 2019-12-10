@@ -67,6 +67,7 @@ public class Simulator {
 
                 boolean wasOnGround = isStanding(newX, newY) && canJump;
                 boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
+                boolean wasOnLadder = onLadder(curState.position.x, curState.position.y);
 
                 if (canJump && !canCancel) {
                     newY += microtickSpeed * 2;
@@ -77,7 +78,9 @@ public class Simulator {
                     newY += microtickSpeed;
                     remainingJumpTime -= microtickDuration;
                 } else if (!wasOnGround && !onLadder(newX, newY)) {
-                    newY -= microtickSpeed;
+                    if (!wasOnLadder) {
+                        newY -= microtickSpeed;
+                    }
                     remainingJumpTime = 0;
                     canJump = false;
                     canCancel = false;
