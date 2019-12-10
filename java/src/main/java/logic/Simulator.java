@@ -85,7 +85,7 @@ public class Simulator {
 
                 boolean onGround = wasOnGround && isStanding(newX, newY);
 
-                if (unitCollidesWithWall(map, newX, newY) || platformCollision(map, newX, newY, curState, move)) {
+                if (unitCollidesWithWall(map, newX, newY) || platformOrLadderCollision(map, newX, newY, curState, move)) {
                     if (newY > curState.position.y) {
                         newY = max(curState.position.y, (int) (newY + HEIGHT) - HEIGHT - EPS);
                     } else {
@@ -132,14 +132,16 @@ public class Simulator {
         return below == PLATFORM && abs(py - (int) py) < 1e-8;
     }
 
-    private boolean platformCollision(Tile[][] map, double newX, double newY, UnitState curState, MoveAction move) {
+    private boolean platformOrLadderCollision(Tile[][] map, double newX, double newY, UnitState curState, MoveAction move) {
         if (move.jumpDown) {
             return false;
         }
         if ((int) newY >= (int) curState.position.y) {
             return false;
         }
-        return tileAtPoint(map, newX - WIDTH / 2, newY) == PLATFORM || tileAtPoint(map, newX + WIDTH / 2, newY) == PLATFORM;
+        return tileAtPoint(map, newX - WIDTH / 2, newY) == PLATFORM
+                || tileAtPoint(map, newX + WIDTH / 2, newY) == PLATFORM
+                || tileAtPoint(map, newX, newY) == LADDER;
     }
 
     private boolean onLadder(double x, double y) {
