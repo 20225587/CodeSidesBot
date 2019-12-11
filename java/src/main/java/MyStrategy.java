@@ -45,7 +45,11 @@ public class MyStrategy {
         this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
         if (game.getCurrentTick() == 0) {
-            simulator = Simulator.real(map);
+            simulator = new Simulator(
+                    map,
+                    (int) game.getProperties().getTicksPerSecond(),
+                    game.getProperties().getUpdatesPerTick()
+            );
         }
 
         //-------
@@ -81,15 +85,26 @@ public class MyStrategy {
         return new UnitAction(0, false, false, new Vec2Double(0, 0), false, false, false, false);
     }
 
-    Plan testPlan;//genStressTestPlan();
+    Plan testPlan;
 
     List<UnitState> actualStates = new ArrayList<>();
+    List<UnitState> simulation;
 
     private UnitAction testSimulation() {
         if (fake) {
             return noop();
         }
         UnitState state = new UnitState(me);
+        if (testPlan == null) {
+            testPlan = genStressTestPlan();
+            simulation = simulator.simulate(state, testPlan);
+        } else {
+            if (!state.equals(simulation.get(game.getCurrentTick() - 1))) {
+                int x = 0;
+                x++;
+            }
+        }
+
         actualStates.add(state);
         if (game.getCurrentTick() == testPlan.moves.size()) {
             TestCasePrinter.print(map, testPlan, actualStates, game);

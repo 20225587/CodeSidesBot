@@ -60,6 +60,8 @@ public class TestCasePrinter {
                 EMPTY,
                 EMPTY,
                 EMPTY,
+                EMPTY,
+                EMPTY,
                 PLATFORM,
                 PLATFORM,
                 PLATFORM,
@@ -67,7 +69,8 @@ public class TestCasePrinter {
                 PLATFORM,
                 LADDER,
                 LADDER,
-                LADDER
+                LADDER,
+                JUMP_PAD
         );
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
