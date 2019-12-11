@@ -1,6 +1,5 @@
 package logic;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,7 +20,9 @@ public class Plan {
 
     public Plan add(int n, MoveAction move) {
         moves.addAll(Collections.nCopies(n, move));
-        history.add(new HistoryRecord(n, move));
+        if (n != 0) {
+            history.add(new HistoryRecord(n, move));
+        }
         return this;
     }
 
@@ -31,6 +32,22 @@ public class Plan {
 
     public MoveAction get(int index) {
         return moves.get(index);
+    }
+
+    public Plan followUpPlan(MoveAction move) {
+        Plan r = new Plan();
+        r.moves.addAll(moves);
+        r.moves.remove(0);
+
+        r.history.addAll(history);
+        HistoryRecord firstHr = history.get(0);
+        if (firstHr.n == 1) {
+            r.history.remove(0);
+        } else {
+            r.history.set(0, new HistoryRecord(firstHr.n - 1, firstHr.move));
+        }
+        r.add(1, move);
+        return r;
     }
 
     @Override
