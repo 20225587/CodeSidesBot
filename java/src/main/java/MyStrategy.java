@@ -18,6 +18,7 @@ public class MyStrategy {
     public static final ColorFloat BLACK = new ColorFloat(0, 0, 0, 1);
     public static final ColorFloat RED = new ColorFloat(1, 0, 0, 1);
     public static final ColorFloat GREEN = new ColorFloat(0, 1, 0, 1);
+    public static final ColorFloat BLUE = new ColorFloat(0, 0, 1, 1);
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
     public static final double EXPLOSION_SIZE = 6;
     public static final int HEALTHPACK_THRESHOLD = 75;
@@ -173,6 +174,7 @@ public class MyStrategy {
             //print(dfsDist);
             for (Plan plan : plans) {
                 List<UnitState> states = simulator.simulate(start, plan);
+                //debug.drawSquare(states.get(states.size() - 1).position, 0.1, BLUE);
                 double dist = evalDist(states, dfsDist, targetPos);
                 if (dist < minDist) {
                     minDist = dist;
@@ -180,10 +182,14 @@ public class MyStrategy {
                     bestPlan = plan;
                 }
             }
-            for (UnitState state : bestStates) {
-                debug.drawSquare(state.position, 0.1, GREEN);
-            }
+            showStates(bestStates, GREEN);
             return bestPlan.get(0);
+        }
+    }
+
+    private void showStates(List<UnitState> states, ColorFloat color) {
+        for (UnitState state : states) {
+            debug.drawSquare(state.position, 0.1, color);
         }
     }
 
@@ -286,7 +292,7 @@ public class MyStrategy {
     }
 
     private Set<Plan> genMovementPlans(Point targetPos) {
-        int steps = 25;
+        int steps = 64;
         Set<Plan> plans = new LinkedHashSet<>();
 
         double speedToTarget = simulator.clampSpeed(simulator.fromTickSpeed(targetPos.x - me.getPosition().getX()));
@@ -294,7 +300,7 @@ public class MyStrategy {
 
         plans.add(plan(1, 0, false, false).add(steps - 1, 0, true, false));
 
-        for (int moveCnt = 0; moveCnt <= steps; moveCnt += 10) {
+        for (int cnt = 0; cnt <= steps; cnt += 6) {
             for (double speed : new double[]{-SPEED, 0, SPEED}) {
                 for (boolean jump : new boolean[]{false, true}) {
                     for (boolean jumpDown : new boolean[]{false, true}) {
@@ -302,12 +308,21 @@ public class MyStrategy {
                             continue;
                         }
                         plans.add(
-                                plan(moveCnt, new MoveAction(speed, jump, jumpDown))
-                                        .add(steps - moveCnt, new MoveAction(0, jump, jumpDown))
+                                plan(cnt, new MoveAction(speed, jump, jumpDown))
+                                        .add(steps - cnt, new MoveAction(0, jump, jumpDown))
                         );
                         plans.add(
-                                plan(moveCnt, speed, false, false)
-                                        .add(steps - moveCnt, speed, jump, jumpDown)
+                                plan(cnt, speed, false, false)
+                                        .add(steps - cnt, speed, jump, jumpDown)
+                        );
+
+                        plans.add(
+                                plan(cnt, speed, false, false)
+                                        .add(steps - cnt, -speed, jump, jumpDown)
+                        );
+                        plans.add(
+                                plan(cnt, 0, false, false)
+                                        .add(steps - cnt, speed, jump, jumpDown)
                         );
                     }
                 }
@@ -325,8 +340,8 @@ public class MyStrategy {
 
     private Point chooseTargetPosition(Unit enemy, LootBox targetBonus) {
         /*if (true) {
-            //return new Point(map.length - 2, 1);
-            return new Point(3.33, 10);
+            return new Point(map.length - 2, 1);
+            //return new Point(3.33, 10);
         }/**/
         Point targetPos;
         if (shouldGoToHealthPack(targetBonus)) {
