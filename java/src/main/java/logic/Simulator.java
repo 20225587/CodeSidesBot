@@ -77,10 +77,12 @@ public class Simulator {
                 } else if (canJump && move.jump) {
                     newY += microtickSpeed;
                     remainingJumpTime -= microtickDuration;
-                } else if (!wasOnGround && !onLadder(newX, newY)) {
-                    if (!wasOnLadder) {
-                        newY -= microtickSpeed;
-                    }
+                } else if (!wasOnGround && !wasOnLadder) {
+                    newY -= microtickSpeed;
+                    remainingJumpTime = 0;
+                    canJump = false;
+                    canCancel = false;
+                } else {
                     remainingJumpTime = 0;
                     canJump = false;
                     canCancel = false;
