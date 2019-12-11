@@ -49,7 +49,8 @@ public class Simulator {
         List<UnitState> r = new ArrayList<>();
         int tick = 0;
         for (MoveAction move : plan.moves) {
-            for (int microtick = 0; microtick < microticksPerTick; microtick++) {
+            int microtick = 0;
+            while (microtick < microticksPerTick) {
                 double newX = curState.position.x;
                 double newY = curState.position.y;
                 double remainingJumpTime = curState.remainingJumpTime;
@@ -121,12 +122,82 @@ public class Simulator {
                     remainingJumpTime = 0;
                 }
 
-                curState = new UnitState(new Point(newX, newY), remainingJumpTime, canJump, canCancel);
+                UnitState newState = new UnitState(new Point(newX, newY), remainingJumpTime, canJump, canCancel);
+                int microticksToSkip = calcMicroticksToSkip(curState, newState, microtick);
+                if (microticksToSkip > 0) {
+                    Point delta = newState.position.minus(curState.position);
+                    double dt = newState.remainingJumpTime - curState.remainingJumpTime;
+                    curState = new UnitState(
+                            newState.position.add(delta.mult(microticksToSkip)),
+                            newState.remainingJumpTime + dt * microticksToSkip,
+                            newState.canJump,
+                            newState.canCancel
+                    );
+                    microtick += microticksToSkip + 1;
+                } else {
+                    curState = newState;
+                    microtick++;
+                }
             }
             r.add(curState);
             tick++;
         }
         return r;
+    }
+
+    private int calcMicroticksToSkip(UnitState curState, UnitState newState, int microtick) {
+        if (curState.canJump != newState.canJump ||
+                curState.canCancel != newState.canCancel ||
+                newState.remainingJumpTime > curState.remainingJumpTime
+        ) {
+            return 0;
+        }
+        int r = max(0, microticksPerTick - microtick - 1);
+        Point from = curState.position;
+        Point to = newState.position;
+        if (!sameInt(from.x, to.x, 0) ||
+                !sameInt(from.x, to.x, WIDTH / 2) ||
+                !sameInt(from.x, to.x, -WIDTH / 2) ||
+                !sameInt(from.y, to.y, 0) ||
+                !sameInt(from.y, to.y, HEIGHT) ||
+                !sameInt(from.y, to.y, HEIGHT / 2)
+        ) {
+            return 0;
+        }
+        double dx = to.x - from.x;
+        double dy = to.y - from.y;
+        if (dx > 0) {
+            r = min(r, remainingTicks(1 - to.x % 1, dx));
+            r = min(r, remainingTicks(1 - (to.x - WIDTH / 2) % 1, dx));
+            r = min(r, remainingTicks(1 - (to.x + WIDTH / 2) % 1, dx));
+        } else if (dx < 0) {
+            r = min(r, remainingTicks(to.x % 1, dx));
+            r = min(r, remainingTicks((to.x - WIDTH / 2) % 1, dx));
+            r = min(r, remainingTicks((to.x + WIDTH / 2) % 1, dx));
+        }
+        if (dy > 0) {
+            r = min(r, remainingTicks(1 - to.y % 1, dy));
+            r = min(r, remainingTicks(1 - (to.y + HEIGHT) % 1, dy));
+            r = min(r, remainingTicks(1 - (to.y + HEIGHT / 2) % 1, dy));
+        } else if (dy < 0) {
+            r = min(r, remainingTicks(to.y % 1, dy));
+            r = min(r, remainingTicks((to.y + HEIGHT) % 1, dy));
+            r = min(r, remainingTicks((to.y + HEIGHT / 2) % 1, dy));
+        }
+        double dt = newState.remainingJumpTime - curState.remainingJumpTime;
+        if (dt < 0) {
+            r = min(r, remainingTicks(curState.remainingJumpTime, dt));
+        }
+        return r;
+    }
+
+    private int remainingTicks(double remDist, double delta) {
+        int remTicks = (int) min(remDist / abs(delta), microticksPerTick);
+        return max(0, remTicks - 1);
+    }
+
+    private boolean sameInt(double a, double b, double delta) {
+        return (int) (a + delta) == (int) (b + delta);
     }
 
     private boolean unitOnPlatform(double px, double py) {

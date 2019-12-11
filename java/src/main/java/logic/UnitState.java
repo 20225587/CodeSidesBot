@@ -48,7 +48,7 @@ public class UnitState {
     @Override
     public boolean equals(Object o) {
         UnitState unitState = (UnitState) o;
-        return Double.compare(unitState.remainingJumpTime, remainingJumpTime) == 0 &&
+        return Math.abs(unitState.remainingJumpTime - remainingJumpTime) < 1e-10 &&
                 canJump == unitState.canJump &&
                 canCancel == unitState.canCancel &&
                 Objects.equals(position, unitState.position);
@@ -56,6 +56,6 @@ public class UnitState {
 
     @Override
     public int hashCode() {
-        return Objects.hash(position, remainingJumpTime, canJump, canCancel);
+        throw new RuntimeException("equals is broken!");
     }
 }
