@@ -276,6 +276,9 @@ public class MyStrategy {
                     if (map[toX][toY] == WALL) {
                         continue;
                     }
+                    if (map[toX][toY + 1] == WALL && map[toX][toY - 1] == WALL) {
+                        continue;
+                    }
                     if (dist[toX][toY] != inf) {
                         continue;
                     }
@@ -338,10 +341,18 @@ public class MyStrategy {
         }
     }
 
+    Random rnd = new Random(6);
+    Point target;
+
     private Point chooseTargetPosition(Unit enemy, LootBox targetBonus) {
         /*if (true) {
-            return new Point(map.length - 2, 1);
-            //return new Point(3.33, 10);
+            while (!goodTarget(target)) {
+                target = new Point(
+                        rnd.nextInt(map.length - 2) + 1.5,
+                        rnd.nextInt(map[0].length - 2) + 1.5
+                );
+            }
+            return target;
         }/**/
         Point targetPos;
         if (shouldGoToHealthPack(targetBonus)) {
@@ -352,6 +363,21 @@ public class MyStrategy {
             targetPos = findShootingPosition(enemy);
         }
         return targetPos;
+    }
+
+    private boolean goodTarget(Point target) {
+        if (target == null) return false;
+        if ((int) me.getPosition().getX() == (int) target.x
+                && ((int) me.getPosition().getY() == (int) target.y)) {
+            return false;
+        }
+        if (tileAtPoint(target.x, target.y + 1) == WALL) {
+            return false;
+        }
+        if (tileAtPoint(target) == WALL) {
+            return false;
+        }
+        return true;
     }
 
     private boolean shouldGoToHealthPack(LootBox targetBonus) {
