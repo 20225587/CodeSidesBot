@@ -65,9 +65,10 @@ public class Simulator {
                     }
                 }
 
-                boolean wasOnGround = isStanding(newX, newY) && canJump;
+
                 boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
                 boolean wasOnLadder = onLadder(curState.position.x, curState.position.y);
+                boolean wasOnGround = isStanding(newX, newY) && canJump && !wasOnLadder;
 
                 if (canJump && !canCancel) {
                     newY += microtickSpeed * 2;
