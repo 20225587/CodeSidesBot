@@ -199,11 +199,37 @@ public class MyStrategy {
 
     private double evalDist(List<UnitState> states, int[][] dfsDist, Point target) {
         double r = Double.POSITIVE_INFINITY;
+        boolean collidesWithEnemy = false;
         for (int i = 0; i < states.size(); i++) {
-            double dist = evaluate(dfsDist, target, states.get(i)) + i * simulator.tickSpeed * 0.1;
+            UnitState state = states.get(i);
+            double dist = evaluate(dfsDist, target, state) + i * simulator.tickSpeed * 0.1;
+            if (collidesWithEnemy(state)) {
+                collidesWithEnemy = true;
+            }
             r = min(r, dist);
         }
+        if (collidesWithEnemy) {
+            r += 100;
+        }
         return r;
+    }
+
+    private boolean collidesWithEnemy(UnitState state) {
+        Point a = state.position;
+        for (Unit enemy : getEnemies()) {
+            Point b = new Point(enemy);
+            if (intersects(new Segment(a.x - WIDTH / 2, a.x + WIDTH / 2), new Segment(b.x - WIDTH / 2, b.x + WIDTH / 2)) &&
+                    intersects(new Segment(a.y, a.y + HEIGHT), new Segment(b.y, b.y + HEIGHT))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<Unit> getEnemies() {
+        return Stream.of(game.getUnits())
+                .filter(u -> u.getPlayerId() != me.getPlayerId())
+                .collect(Collectors.toList());
     }
 
     private double evaluate(int[][] dfsDist, Point target, UnitState state) {
@@ -330,6 +356,10 @@ public class MyStrategy {
                         );
                         plans.add(
                                 plan(cnt, 0, false, false)
+                                        .add(steps - cnt, speed, jump, jumpDown)
+                        );
+                        plans.add(
+                                plan(cnt, 0, true, false)
                                         .add(steps - cnt, speed, jump, jumpDown)
                         );
                     }
