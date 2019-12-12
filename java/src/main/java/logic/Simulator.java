@@ -24,6 +24,7 @@ public class Simulator {
     private final double microtickDuration;
     private final double microtickSpeed;
     public final double tickSpeed;
+    public final double tickDuration;
 
     private final Tile[][] map;
 
@@ -34,6 +35,7 @@ public class Simulator {
         microtickDuration = 1.0 / ticksPerSecond / microticksPerTick;
         microtickSpeed = SPEED / ticksPerSecond / microticksPerTick;
         tickSpeed = microtickSpeed * microticksPerTick;
+        tickDuration = 1.0 / ticksPerSecond;
     }
 
     public static Simulator real(Tile[][] map) {

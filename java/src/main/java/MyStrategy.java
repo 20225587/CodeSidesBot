@@ -71,6 +71,7 @@ public class MyStrategy {
         boolean shoot = shouldShoot(enemy);
 
         boolean swap = me.getWeapon() != null && me.getWeapon().getTyp() == ROCKET_LAUNCHER;
+        boolean plantMine = false;
 
         return new UnitAction(
                 moveAction.speed,
@@ -80,7 +81,7 @@ public class MyStrategy {
                 shoot,
                 false,
                 swap,
-                false
+                plantMine
         );
     }
 
@@ -576,6 +577,29 @@ public class MyStrategy {
                 damage += explosion.getDamage();
             }
             danger += getDanger(minAllowedDist, minDist, damage);
+        }
+        danger += minesDangerFactor(states, minAllowedDist);
+        return danger;
+    }
+
+    private double minesDangerFactor(List<UnitState> states, double minAllowedDist) {
+        double danger = 0;
+        for (Mine mine : game.getMines()) {
+            if (mine.getState() != MineState.TRIGGERED) {
+                continue;
+            }
+            int damage = mine.getExplosionParams().getDamage();
+            double timer = mine.getTimer();
+            int explosionTick = (int) (timer / simulator.tickDuration);
+            if (explosionTick >= states.size()) {
+                continue;
+            }
+            double mineSize = mine.getSize().getX();
+            Point mineCenter = new Point(mine.getPosition()).add(new Point(0, mineSize / 2));
+            UnitState state = states.get(explosionTick);
+            double explosionSize = mine.getExplosionParams().getRadius() * 2;
+            double dist = distToBullet(state.position, mineCenter, explosionSize);
+            danger += getDanger(minAllowedDist, dist, damage);
         }
         return danger;
     }
