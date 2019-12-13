@@ -30,10 +30,13 @@ public class MyStrategy {
     Game game;
     MyDebug debug;
     Tile[][] map;
+
     Simulator simulator;
-    Plan lastDodgePlan = null;
-    Plan lastMovementPlan = null;
     List<Point> stablePoints;
+
+    // things different for different units
+    Map<Integer, Plan> lastDodgePlan = new HashMap<>();
+    Map<Integer, Plan> lastMovementPlan = new HashMap<>();
 
     public MyStrategy() {
         fake = false;
@@ -49,17 +52,13 @@ public class MyStrategy {
         this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
         fixBorders(map);
-        if (game.getCurrentTick() == 0) {
+        if (simulator == null) {
             simulator = new Simulator(
                     map,
                     (int) game.getProperties().getTicksPerSecond(),
                     game.getProperties().getUpdatesPerTick()
             );
             stablePoints = findStablePoints();
-        }
-
-        if (game.getUnits().length != 2) {
-            return noop();
         }
 
 //        for (Point p : stablePoints) {
@@ -197,7 +196,7 @@ public class MyStrategy {
                 }
             }
             showStates(bestStates, GREEN);
-            lastMovementPlan = bestPlan;
+            lastMovementPlan.put(me.getId(), bestPlan);
             return bestPlan.get(0);
         }
     }
@@ -338,7 +337,7 @@ public class MyStrategy {
     private Set<Plan> genMovementPlans(Point targetPos) {
         int steps = 64;
         Set<Plan> plans = new LinkedHashSet<>();
-        addFollowUpPlans(plans, lastMovementPlan);
+        addFollowUpPlans(plans, lastMovementPlan.get(me.getId()));
 
         double speedToTarget = simulator.clampSpeed(simulator.fromTickSpeed(targetPos.x - me.getPosition().getX()));
         plans.add(plan(1, speedToTarget, false, false).add(steps - 1, 0, false, false));
@@ -551,13 +550,13 @@ public class MyStrategy {
         /*for (UnitState st : simulator.simulate(state, bestPlan)) {
             debug.drawSquare(st.position, 0.1, GREEN);
         }/**/
-        lastDodgePlan = bestPlan;
+        lastDodgePlan.put(me.getId(), bestPlan);
         return bestPlan.get(0);
     }
 
     private Set<Plan> genDodgePlans(int steps) {
         Set<Plan> plans = new LinkedHashSet<>();
-        addFollowUpPlans(plans, lastDodgePlan);
+        addFollowUpPlans(plans, lastDodgePlan.get(me.getId()));
         for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
             plans.add(
                     plan(standCnt, new MoveAction(0, false, false))
