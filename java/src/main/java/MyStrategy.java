@@ -33,6 +33,7 @@ public class MyStrategy {
     Simulator simulator;
     Plan lastDodgePlan = null;
     Plan lastMovementPlan = null;
+    List<Point> stablePoints;
 
     public MyStrategy() {
         fake = false;
@@ -47,13 +48,23 @@ public class MyStrategy {
         this.game = game;
         this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
         this.map = game.getLevel().getTiles();
+        fixBorders(map);
         if (game.getCurrentTick() == 0) {
             simulator = new Simulator(
                     map,
                     (int) game.getProperties().getTicksPerSecond(),
                     game.getProperties().getUpdatesPerTick()
             );
+            stablePoints = findStablePoints();
         }
+
+        if (game.getUnits().length != 2) {
+            return noop();
+        }
+
+//        for (Point p : stablePoints) {
+//            debug.drawSquare(p, 0.05, GREEN);
+//        }
 
         //-------
 
@@ -442,34 +453,49 @@ public class MyStrategy {
     }
 
     private Point findShootingPosition(Unit enemy) {
+        Point enemyPos = new Point(enemy);
         if (game.getCurrentTick() > game.getProperties().getMaxTickCount() * 0.75 && !iAmWinning()) {
-            return new Point(enemy);
+            return enemyPos;
         }
+        /*if (!fake && timeToShoot(me) < timeToShoot(enemy) - 0.1) {
+            debug.drawSquare(new Point(map.length / 2.0, map[0].length / 2.0), 2, RED);
+            return enemyPos;
+        }/**/
+        return getSafeShootingPosition(enemy);
+    }
+
+    private Point getSafeShootingPosition(Unit enemy) {
         double maxDist = Double.NEGATIVE_INFINITY;
         Point bestPoint = null;
         double myX = me.getPosition().getX();
         double enemyX = enemy.getPosition().getX();
-        for (int x = 1; x < map.length - 1; x++) {
-            for (int y = 1; y < map[0].length - 1; y++) {
-                if (canBeInTile(x, y)) {
-                    Point muzzlePoint = new Point(x + 0.5, y + HEIGHT / 2);
-                    if (inLineOfSight(muzzlePoint, map, me.getWeapon(), enemy)) {
-                        double dist = dist(muzzlePoint, enemy);
-                        boolean sameSide = abs(myX - enemyX) < 1 || (myX < enemyX) == (muzzlePoint.x < enemyX);
-                        if (!sameSide) {
-                            dist -= 1000;
-                        }
-                        if (dist > maxDist) {
-                            maxDist = dist;
-                            bestPoint = new Point(x + 0.5, y);
-                        }
-                    }
+        for (Point p : stablePoints) {
+            Point muzzlePoint = new Point(p.x, p.y + HEIGHT / 2);
+            if (inLineOfSight(muzzlePoint, map, me.getWeapon(), enemy)) {
+                double dist = dist(muzzlePoint, enemy);
+                boolean sameSide = abs(myX - enemyX) < 1 || (myX < enemyX) == (muzzlePoint.x < enemyX);
+                if (!sameSide) {
+                    dist -= 1000;
+                }
+                if (dist > maxDist) {
+                    maxDist = dist;
+                    bestPoint = p;
                 }
             }
         }
         return bestPoint;
     }
 
+    static double timeToShoot(Unit unit) {
+        Weapon weapon = unit.getWeapon();
+        if (weapon == null) {
+            return Double.POSITIVE_INFINITY;
+        }
+        if (weapon.getFireTimer() == null) {
+            return 0;
+        }
+        return weapon.getFireTimer();
+    }
 
     private boolean canBeInTile(int x, int y) {
         if (map[x][y] == WALL) {
@@ -864,6 +890,45 @@ public class MyStrategy {
             }
         }
         return nearestEnemy;
+    }
+
+    private List<Point> findStablePoints() {
+        List<Point> r = new ArrayList<>();
+        double delta = 0.5;
+        for (double x = 1 + WIDTH / 2; x < map.length - 1 - WIDTH / 2; x = roundIfClose(x + delta)) {
+            for (double y = 1; y < map[0].length - 1 - HEIGHT; y = roundIfClose(y + delta)) {
+                if (isStable(x, y)) {
+                    r.add(new Point(x, y));
+                }
+            }
+        }
+        return r;
+    }
+
+    private double roundIfClose(double v) {
+        if (abs(v - round(v)) < 1e-9) {
+            return round(v);
+        }
+        return v;
+    }
+
+    private boolean isStable(double x, double y) {
+        if (unitCollidesWithWall(map, x, y)) {
+            return false;
+        }
+        UnitState start = new UnitState(new Point(x, y), 0, false, false);
+        List<UnitState> states = simulator.simulate(start, plan(1, 0, false, false));
+        return states.stream().allMatch(s -> s.position.equals(start.position));
+    }
+
+    private static void fixBorders(Tile[][] map) {
+        for (int x = 0; x < map.length; x++) {
+            for (int y = 0; y < map[x].length; y++) {
+                if (x == 0 || y == 0 || x == map.length - 1 || y == map[x].length - 1) {
+                    map[x][y] = WALL;
+                }
+            }
+        }
     }
 
     static double sqrDist(Vec2Double a, Vec2Double b) {
