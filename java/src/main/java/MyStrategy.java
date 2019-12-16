@@ -53,6 +53,9 @@ public class MyStrategy {
     }
 
     public UnitAction getAction(Unit me, Game game, Debug debug0) {
+        /*if (fake) {
+            return noop();
+        }/**/
         this.game = game;
         this.debug = (local && !fake) ? new MyDebugImpl(debug0) : new MyDebugStub();
         if (simulator == null) {
@@ -81,14 +84,14 @@ public class MyStrategy {
     private Intention getIntention(Unit me, Intention primaryIntention) {
         Unit enemy = chooseEnemy(me);
         LootBox targetBonus = chooseTargetBonus(me, enemy);
-        Plan plan = move(me, enemy, targetBonus);
+        PlanAndStates ps = move(me, enemy, targetBonus, primaryIntention);
         Vec2Double aimDir = aim(me, enemy);
         boolean shoot = shouldShoot(me, enemy);
 
         boolean swap = me.getWeapon() != null && me.getWeapon().getTyp() == ROCKET_LAUNCHER;
         boolean plantMine = false;
 
-        MoveAction moveAction = plan.get(0);
+        MoveAction moveAction = ps.plan.get(0);
 
         UnitAction unitAction = new UnitAction(
                 moveAction.speed,
@@ -100,18 +103,30 @@ public class MyStrategy {
                 swap,
                 plantMine
         );
-        return new Intention(plan, unitAction, targetBonus);
+        return new Intention(ps.plan, ps.states, unitAction, targetBonus);
     }
 
     static class Intention {
         final Plan plan;
+        final List<UnitState> states;
         final UnitAction unitAction;
         final LootBox targetBonus;
 
-        Intention(Plan plan, UnitAction unitAction, LootBox targetBonus) {
+        Intention(Plan plan, List<UnitState> states, UnitAction unitAction, LootBox targetBonus) {
             this.plan = plan;
+            this.states = states;
             this.unitAction = unitAction;
             this.targetBonus = targetBonus;
+        }
+    }
+
+    static class PlanAndStates {
+        final Plan plan;
+        final List<UnitState> states;
+
+        PlanAndStates(Plan plan, List<UnitState> states) {
+            this.plan = plan;
+            this.states = states;
         }
     }
 
@@ -206,29 +221,25 @@ public class MyStrategy {
         return plan;
     }
 
-    private Plan move(Unit me, Unit enemy, LootBox targetBonus) {
-        Plan plan = move0(me, enemy, targetBonus);
-        /*if (!fake) {
-            move = new MoveAction(0, false, false);
-        } else {
-            move = new MoveAction(move.speed, true, false);
-        }/**/
-        Plan dodge = tryDodgeBullets(me, plan);
+    private PlanAndStates move(Unit me, Unit enemy, LootBox targetBonus, Intention primaryIntention) {
+        PlanAndStates plan = move0(me, enemy, targetBonus, primaryIntention);
+        PlanAndStates dodge = tryDodgeBullets(me, plan, primaryIntention);
         if (dodge != null) {
             return dodge;
         }
         return plan;
     }
 
-    private Plan move0(Unit me, Unit enemy, LootBox targetBonus) {
+    private PlanAndStates move0(Unit me, Unit enemy, LootBox targetBonus, Intention primaryIntention) {
         Point targetPos = chooseTargetPosition(me, enemy, targetBonus);
+        UnitState start = new UnitState(me);
         if (targetPos == null) {
-            return plan(getPlanLength(), new MoveAction(0, false, false));
+            Plan plan = plan(getPlanLength(), new MoveAction(0, false, false));
+            return new PlanAndStates(plan, simulator.simulate(start, plan));
         } else {
             debug.drawLine(new Point(me), targetPos, WHITE);
             Set<Plan> plans = genMovementPlans(me, targetPos);
             double minDist = Double.POSITIVE_INFINITY;
-            UnitState start = new UnitState(me);
             Plan bestPlan = null;
             List<UnitState> bestStates = null;
             int[][] dfsDist = dfs(targetPos);
@@ -236,7 +247,7 @@ public class MyStrategy {
             for (Plan plan : plans) {
                 List<UnitState> states = simulator.simulate(start, plan);
                 //debug.drawSquare(states.get(states.size() - 1).position, 0.1, BLUE);
-                double dist = evalDist(states, dfsDist, targetPos);
+                double dist = evalDist(states, dfsDist, targetPos, primaryIntention);
                 if (dist < minDist) {
                     minDist = dist;
                     bestStates = states;
@@ -245,7 +256,7 @@ public class MyStrategy {
             }
             showStates(bestStates, GREEN);
             lastMovementPlan.put(me.getId(), bestPlan);
-            return bestPlan;
+            return new PlanAndStates(bestPlan, bestStates);
         }
     }
 
@@ -255,7 +266,7 @@ public class MyStrategy {
         }
     }
 
-    private double evalDist(List<UnitState> states, int[][] dfsDist, Point target) {
+    private double evalDist(List<UnitState> states, int[][] dfsDist, Point target, Intention primaryIntention) {
         double r = Double.POSITIVE_INFINITY;
         boolean collidesWithEnemy = false;
         for (int i = 0; i < states.size(); i++) {
@@ -266,22 +277,39 @@ public class MyStrategy {
             }
             r = min(r, dist);
         }
+        final double collisionPenalty = 100;
         if (collidesWithEnemy) {
-            r += 100;
+            r += collisionPenalty;
+        }
+        if (primaryIntention != null && collides(primaryIntention.states, states)) {
+            r += collisionPenalty;
         }
         return r;
+    }
+
+    private boolean collides(List<UnitState> a, List<UnitState> b) {
+        for (int i = 0; i < a.size(); i++) {
+            if (unitsIntersect(a.get(i).position, b.get(i).position)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean collidesWithEnemy(UnitState state) {
         Point a = state.position;
         for (Unit enemy : enemies) {
             Point b = new Point(enemy);
-            if (intersects(new Segment(a.x - WIDTH / 2, a.x + WIDTH / 2), new Segment(b.x - WIDTH / 2, b.x + WIDTH / 2)) &&
-                    intersects(new Segment(a.y, a.y + HEIGHT), new Segment(b.y, b.y + HEIGHT))) {
+            if (unitsIntersect(a, b)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean unitsIntersect(Point a, Point b) { // todo get rid of excessive object creation
+        return intersects(new Segment(a.x - WIDTH / 2, a.x + WIDTH / 2), new Segment(b.x - WIDTH / 2, b.x + WIDTH / 2)) &&
+                intersects(new Segment(a.y, a.y + HEIGHT), new Segment(b.y, b.y + HEIGHT));
     }
 
     private double evaluate(int[][] dfsDist, Point target, UnitState state) {
@@ -571,11 +599,11 @@ public class MyStrategy {
         return false;
     }
 
-    private Plan tryDodgeBullets(Unit me, Plan defaultPlan) { // returns null if not in danger or can't dodge
+    private PlanAndStates tryDodgeBullets(Unit me, PlanAndStates defaultPlan, Intention primaryIntention) { // returns null if not in danger or can't dodge
         UnitState state = new UnitState(me);
         int steps = getPlanLength();
-        List<UnitState> states = simulator.simulate(state, defaultPlan);
-        double defaultDanger = dangerFactor(me, states);
+        List<UnitState> states = defaultPlan.states;
+        double defaultDanger = dangerFactor(me, states, primaryIntention);
         if (defaultDanger <= 0) {
             return null;
         }
@@ -598,12 +626,14 @@ public class MyStrategy {
 
         double minDanger = Double.POSITIVE_INFINITY;
         Plan bestPlan = null;
+        List<UnitState> bestStates = null;
         for (Plan plan : plans) {
             List<UnitState> dodgeStates = simulator.simulate(state, plan);
-            double danger = dangerFactor(me, dodgeStates);
+            double danger = dangerFactor(me, dodgeStates, primaryIntention);
             if (danger < minDanger) {
                 minDanger = danger;
                 bestPlan = plan;
+                bestStates = dodgeStates;
             }
         }
         if (minDanger >= defaultDanger) {
@@ -613,7 +643,7 @@ public class MyStrategy {
             debug.drawSquare(st.position, 0.1, GREEN);
         }/**/
         lastDodgePlan.put(me.getId(), bestPlan);
-        return bestPlan;
+        return new PlanAndStates(bestPlan, bestStates);
     }
 
     private Set<Plan> genDodgePlans(Unit me, int steps) {
@@ -661,7 +691,7 @@ public class MyStrategy {
         }
     }
 
-    private double dangerFactor(Unit me, List<UnitState> states) {
+    private double dangerFactor(Unit me, List<UnitState> states, Intention primaryIntention) {
         double minAllowedDist = 0.5;
         double danger = 0;
         for (Bullet bullet : game.getBullets()) {
@@ -696,6 +726,9 @@ public class MyStrategy {
             danger += getDanger(minAllowedDist, minDist, damage);
         }
         danger += minesDangerFactor(states, minAllowedDist);
+        if (primaryIntention != null && collides(states, primaryIntention.states)) {
+            danger += 100;
+        }
         return danger;
     }
 
