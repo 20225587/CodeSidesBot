@@ -828,7 +828,47 @@ public class MyStrategy {
         if (canExplodeMyselfWithBazooka(me)) {
             return false;
         }
+        if (canShootTeammate(me)) {
+            return false;
+        }
         return goodSpread(me, enemy, weapon);
+    }
+
+    private boolean canShootTeammate(Unit me) {
+        Unit teammate = getTeammate(me);
+        if (teammate == null) {
+            return false;
+        }
+        Weapon weapon = me.getWeapon();
+        double angle = weapon.getLastAngle();
+        double spread = weapon.getSpread();
+
+        return canShootTeammate(me, teammate, weapon, angle - spread) ||
+                canShootTeammate(me, teammate, weapon, angle + spread);
+    }
+
+    private boolean canShootTeammate(Unit me, Unit teammate, Weapon weapon, double shootAngle) {
+        BulletParams bullet = weapon.getParams().getBullet();
+        double speed = bullet.getSpeed();
+        Point start = muzzlePoint(me);
+        List<Point> bulletPositions = simulator.simulateBullet(
+                start,
+                Point.dir(shootAngle).mult(speed),
+                10
+        );
+        for (Point bulletPosition : bulletPositions) {
+            if (distToBullet(new Point(teammate), bulletPosition, bullet.getSize()) < 0.1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Unit getTeammate(Unit me) {
+        return myTeam.stream()
+                .filter(u -> u.getId() != me.getId())
+                .findAny()
+                .orElse(null);
     }
 
     private boolean canExplodeMyselfWithBazooka(Unit me) {

@@ -276,14 +276,19 @@ public class Simulator {
     }
 
     public List<Point> simulateBullet(Bullet bullet, int ticks) {
-        List<Point> r = new ArrayList<>();
-        Point curPos = new Point(bullet.getPosition());
-        Point speed = new Point(
-                toTickSpeed(bullet.getVelocity().getX()),
-                toTickSpeed(bullet.getVelocity().getY())
+        return simulateBullet(
+                new Point(bullet.getPosition()),
+                new Point(bullet.getVelocity()),
+                ticks
         );
+    }
+
+    public List<Point> simulateBullet(Point start, Point speed, int ticks) {
+        Point curPos = start;
+        Point tickSpeed = speed.mult(tickDuration);
+        List<Point> r = new ArrayList<>();
         for (int i = 0; i < ticks; i++) {
-            curPos = curPos.add(speed);
+            curPos = curPos.add(tickSpeed);
             r.add(curPos);
         }
         return r;
