@@ -401,7 +401,7 @@ public class MyStrategy {
         }/**/
         Point targetPos;
         if (shouldGoToHealthPack(targetBonus)) {
-            targetPos = heathPackTargetPoint(targetBonus);
+            targetPos = healthPackTargetPoint(targetBonus, enemy);
         } else if (targetBonus != null && targetBonus.getItem() instanceof Item.Weapon) {
             targetPos = new Point(targetBonus.getPosition());
         } else {
@@ -701,7 +701,7 @@ public class MyStrategy {
         }
     }
 
-    private Point heathPackTargetPoint(LootBox healthPack) {
+    private Point healthPackTargetPoint(LootBox healthPack, Unit enemy) {
         Point hpPos = new Point(healthPack.getPosition());
         if (me.getHealth() < HEALTHPACK_THRESHOLD) {
             return hpPos;
@@ -709,13 +709,17 @@ public class MyStrategy {
         if ((int) me.getPosition().getY() != (int) healthPack.getPosition().getY()) {
             return hpPos;
         }
-        double centerX = map.length / 2.0;
         double delta = healthPack.getSize().getX() / 2 + me.getSize().getX() / 2 + 0.1;
-        if (hpPos.x < centerX) {
-            return new Point(hpPos.x + delta, hpPos.y);
+        double enemyX = enemy.getPosition().getX();
+        double targetX;
+        if (enemyX > hpPos.x + delta) {
+            targetX = hpPos.x + delta;
+        } else if (enemyX < hpPos.x - delta) {
+            targetX = hpPos.x - delta;
         } else {
-            return new Point(hpPos.x - delta, hpPos.y);
+            targetX = enemyX;
         }
+        return new Point(targetX, hpPos.y);
     }
 
     private boolean enoughTimeToGetTo(int platformFloor) {
