@@ -27,7 +27,6 @@ public class MyStrategy {
     final boolean local;
     final boolean bazookaOnly = false;
 
-    Unit me;
     Game game;
     MyDebug debug;
     Tile[][] map;
@@ -35,10 +34,13 @@ public class MyStrategy {
     Simulator simulator;
     List<Point> stablePoints;
     List<Unit> myTeam;
+    List<Unit> enemies;
+    int previousTick = -1;
 
     // things different for different units
     Map<Integer, Plan> lastDodgePlan = new HashMap<>();
     Map<Integer, Plan> lastMovementPlan = new HashMap<>();
+    Map<Integer, UnitAction> plannedMoves = new HashMap<>();
 
     public MyStrategy() {
         fake = false;
@@ -51,37 +53,44 @@ public class MyStrategy {
     }
 
     public UnitAction getAction(Unit me, Game game, Debug debug0) {
-        this.me = me;
         this.game = game;
         this.debug = (local && !fake) ? new MyDebugImpl(debug0) : new MyDebugStub();
         if (simulator == null) {
             initZeroTick();
         }
-        initCommon();
+        initCommon(me);
+        if (previousTick != game.getCurrentTick()) {
+            think();
+        }
+        previousTick = game.getCurrentTick();
+        return plannedMoves.get(me.getId());
+    }
 
-//        for (Point p : stablePoints) {
-//            debug.drawSquare(p, 0.05, GREEN);
-//        }
+    private void think() {
+        Unit primary = getPrimary();
+        Intention primaryIntention = getIntention(primary, null);
+        plannedMoves.put(primary.getId(), primaryIntention.unitAction);
 
-        //-------
+        if (myTeam.size() > 1) {
+            Unit secondary = getSecondary(primary);
+            Intention secondaryIntention = getIntention(secondary, primaryIntention);
+            plannedMoves.put(secondary.getId(), secondaryIntention.unitAction);
+        }
+    }
 
-        /*if (true) {
-            return testSimulation();
-        }/**/
-        /*if (fake) {
-            return noop();
-        }/**/
-
-        Unit enemy = chooseEnemy();
-        LootBox targetBonus = chooseTargetBonus(enemy);
-        MoveAction moveAction = move(enemy, targetBonus);
-        Vec2Double aimDir = aim(enemy);
-        boolean shoot = shouldShoot(enemy);
+    private Intention getIntention(Unit me, Intention primaryIntention) {
+        Unit enemy = chooseEnemy(me);
+        LootBox targetBonus = chooseTargetBonus(me, enemy);
+        Plan plan = move(me, enemy, targetBonus);
+        Vec2Double aimDir = aim(me, enemy);
+        boolean shoot = shouldShoot(me, enemy);
 
         boolean swap = me.getWeapon() != null && me.getWeapon().getTyp() == ROCKET_LAUNCHER;
         boolean plantMine = false;
 
-        return new UnitAction(
+        MoveAction moveAction = plan.get(0);
+
+        UnitAction unitAction = new UnitAction(
                 moveAction.speed,
                 moveAction.jump,
                 moveAction.jumpDown,
@@ -91,6 +100,27 @@ public class MyStrategy {
                 swap,
                 plantMine
         );
+        return new Intention(plan, unitAction, targetBonus);
+    }
+
+    static class Intention {
+        final Plan plan;
+        final UnitAction unitAction;
+        final LootBox targetBonus;
+
+        Intention(Plan plan, UnitAction unitAction, LootBox targetBonus) {
+            this.plan = plan;
+            this.unitAction = unitAction;
+            this.targetBonus = targetBonus;
+        }
+    }
+
+    private Unit getPrimary() {
+        return myTeam.stream().min(Comparator.comparing(Unit::getHealth)).get();
+    }
+
+    private Unit getSecondary(Unit primary) {
+        return myTeam.stream().filter(u -> u.getId() != primary.getId()).findFirst().get();
     }
 
     private void initZeroTick() {
@@ -104,9 +134,12 @@ public class MyStrategy {
         stablePoints = findStablePoints();
     }
 
-    private void initCommon() {
+    private void initCommon(Unit me) {
         myTeam = Stream.of(game.getUnits())
                 .filter(u -> u.getPlayerId() == me.getPlayerId())
+                .collect(Collectors.toList());
+        enemies = Stream.of(game.getUnits())
+                .filter(u -> u.getPlayerId() != me.getPlayerId())
                 .collect(Collectors.toList());
     }
 
@@ -119,7 +152,7 @@ public class MyStrategy {
     List<UnitState> actualStates = new ArrayList<>();
     List<UnitState> simulation;
 
-    private UnitAction testSimulation() {
+    private UnitAction testSimulation(Unit me) {
         if (fake) {
             return noop();
         }
@@ -173,27 +206,27 @@ public class MyStrategy {
         return plan;
     }
 
-    private MoveAction move(Unit enemy, LootBox targetBonus) {
-        MoveAction move = move0(enemy, targetBonus);
+    private Plan move(Unit me, Unit enemy, LootBox targetBonus) {
+        Plan plan = move0(me, enemy, targetBonus);
         /*if (!fake) {
             move = new MoveAction(0, false, false);
         } else {
             move = new MoveAction(move.speed, true, false);
         }/**/
-        MoveAction dodge = tryDodgeBullets(move);
+        Plan dodge = tryDodgeBullets(me, plan);
         if (dodge != null) {
             return dodge;
         }
-        return move;
+        return plan;
     }
 
-    private MoveAction move0(Unit enemy, LootBox targetBonus) {
-        Point targetPos = chooseTargetPosition(enemy, targetBonus);
+    private Plan move0(Unit me, Unit enemy, LootBox targetBonus) {
+        Point targetPos = chooseTargetPosition(me, enemy, targetBonus);
         if (targetPos == null) {
-            return new MoveAction(0, false, false);
+            return plan(getPlanLength(), new MoveAction(0, false, false));
         } else {
             debug.drawLine(new Point(me), targetPos, WHITE);
-            Set<Plan> plans = genMovementPlans(targetPos);
+            Set<Plan> plans = genMovementPlans(me, targetPos);
             double minDist = Double.POSITIVE_INFINITY;
             UnitState start = new UnitState(me);
             Plan bestPlan = null;
@@ -212,7 +245,7 @@ public class MyStrategy {
             }
             showStates(bestStates, GREEN);
             lastMovementPlan.put(me.getId(), bestPlan);
-            return bestPlan.get(0);
+            return bestPlan;
         }
     }
 
@@ -241,7 +274,7 @@ public class MyStrategy {
 
     private boolean collidesWithEnemy(UnitState state) {
         Point a = state.position;
-        for (Unit enemy : getEnemies()) {
+        for (Unit enemy : enemies) {
             Point b = new Point(enemy);
             if (intersects(new Segment(a.x - WIDTH / 2, a.x + WIDTH / 2), new Segment(b.x - WIDTH / 2, b.x + WIDTH / 2)) &&
                     intersects(new Segment(a.y, a.y + HEIGHT), new Segment(b.y, b.y + HEIGHT))) {
@@ -249,12 +282,6 @@ public class MyStrategy {
             }
         }
         return false;
-    }
-
-    private List<Unit> getEnemies() {
-        return Stream.of(game.getUnits())
-                .filter(u -> u.getPlayerId() != me.getPlayerId())
-                .collect(Collectors.toList());
     }
 
     private double evaluate(int[][] dfsDist, Point target, UnitState state) {
@@ -349,11 +376,8 @@ public class MyStrategy {
         return x >= 0 && x < map.length && y >= 0 && y < map[0].length;
     }
 
-    private Set<Plan> genMovementPlans(Point targetPos) {
-        int steps = 64;
-        if (myTeam.size() > 1) {
-            steps /= 4;
-        }
+    private Set<Plan> genMovementPlans(Unit me, Point targetPos) {
+        int steps = getPlanLength();
         Set<Plan> plans = new LinkedHashSet<>();
         addFollowUpPlans(plans, lastMovementPlan.get(me.getId()), steps);
 
@@ -398,6 +422,14 @@ public class MyStrategy {
         return plans;
     }
 
+    private int getPlanLength() {
+        if (myTeam.size() == 2) {
+            return 32;
+        } else {
+            return 64;
+        }
+    }
+
     private void verifyLength(Set<Plan> plans, int steps) {
         if (!plans.stream().allMatch(p -> p.moves.size() == steps)) {
             throw new RuntimeException("wrong plan length");
@@ -407,28 +439,40 @@ public class MyStrategy {
     Random rnd = new Random(12);
     Point target;
 
-    private Point chooseTargetPosition(Unit enemy, LootBox targetBonus) {
+    private Point chooseTargetPosition(Unit me, Unit enemy, LootBox targetBonus) {
         /*if (true) {
-            while (!goodTarget(target)) {
-                target = new Point(
-                        rnd.nextInt(map.length - 2) + 1.5,
-                        rnd.nextInt(map[0].length - 2) + 1.5
-                );
+            if (!iAmFirst(me)) {
+                return new Point(map.length - 2, 1);
+            } else {
+                return new Point(1.5, 1);
             }
-            return target;
         }/**/
         Point targetPos;
-        if (shouldGoToHealthPack(targetBonus)) {
-            targetPos = healthPackTargetPoint(targetBonus, enemy);
+        if (shouldGoToHealthPack(me, targetBonus)) {
+            targetPos = healthPackTargetPoint(me, targetBonus, enemy);
         } else if (targetBonus != null && targetBonus.getItem() instanceof Item.Weapon) {
             targetPos = new Point(targetBonus.getPosition());
         } else {
-            targetPos = findShootingPosition(enemy);
+            targetPos = findShootingPosition(me, enemy);
         }
         return targetPos;
     }
 
-    private boolean goodTarget(Point target) {
+    private boolean iAmFirst(Unit me) {
+        return myTeam.get(0).getId() == me.getId();
+    }
+
+    private Point randomGoodTarget(Unit me) {
+        while (!goodTarget(me, target)) {
+            target = new Point(
+                    rnd.nextInt(map.length - 2) + 1.5,
+                    rnd.nextInt(map[0].length - 2) + 1.5
+            );
+        }
+        return target;
+    }
+
+    private boolean goodTarget(Unit me, Point target) {
         if (target == null) return false;
         if ((int) me.getPosition().getX() == (int) target.x
                 && ((int) me.getPosition().getY() == (int) target.y)) {
@@ -443,45 +487,45 @@ public class MyStrategy {
         return true;
     }
 
-    private boolean shouldGoToHealthPack(LootBox targetBonus) {
+    private boolean shouldGoToHealthPack(Unit me, LootBox targetBonus) {
         if (targetBonus == null || !(targetBonus.getItem() instanceof Item.HealthPack)) {
             return false;
         }
         if (me.getHealth() < HEALTHPACK_THRESHOLD) {
             return true;
         }
-        return iAmWinning();
+        return iAmWinning(me);
     }
 
-    private boolean iAmWinning() {
-        return getMyPlayer().getScore() > getEnemyPlayer().getScore();
+    private boolean iAmWinning(Unit me) {
+        return getMyPlayer(me).getScore() > getEnemyPlayer(me).getScore();
     }
 
-    Player getMyPlayer() {
+    Player getMyPlayer(Unit me) {
         return Stream.of(game.getPlayers())
                 .filter(p -> p.getId() == me.getPlayerId())
                 .findAny().get();
     }
 
-    Player getEnemyPlayer() {
+    Player getEnemyPlayer(Unit me) {
         return Stream.of(game.getPlayers())
                 .filter(p -> p.getId() != me.getPlayerId())
                 .findAny().get();
     }
 
-    private Point findShootingPosition(Unit enemy) {
+    private Point findShootingPosition(Unit me, Unit enemy) {
         Point enemyPos = new Point(enemy);
-        if (game.getCurrentTick() > game.getProperties().getMaxTickCount() * 0.75 && !iAmWinning()) {
+        if (game.getCurrentTick() > game.getProperties().getMaxTickCount() * 0.75 && !iAmWinning(me)) {
             return enemyPos;
         }
         /*if (!fake && timeToShoot(me) < timeToShoot(enemy) - 0.1) {
             debug.drawSquare(new Point(map.length / 2.0, map[0].length / 2.0), 2, RED);
             return enemyPos;
         }/**/
-        return getSafeShootingPosition(enemy);
+        return getSafeShootingPosition(me, enemy);
     }
 
-    private Point getSafeShootingPosition(Unit enemy) {
+    private Point getSafeShootingPosition(Unit me, Unit enemy) {
         double maxDist = Double.NEGATIVE_INFINITY;
         Point bestPoint = null;
         double myX = me.getPosition().getX();
@@ -527,14 +571,11 @@ public class MyStrategy {
         return false;
     }
 
-    private MoveAction tryDodgeBullets(MoveAction move) { // returns null if not in danger or can't dodge
+    private Plan tryDodgeBullets(Unit me, Plan defaultPlan) { // returns null if not in danger or can't dodge
         UnitState state = new UnitState(me);
-        int steps = 50;
-        if (myTeam.size() > 1) {
-            steps /= 4;
-        }
-        List<UnitState> states = simulator.simulate(state, plan(steps, move));
-        double defaultDanger = dangerFactor(states);
+        int steps = getPlanLength();
+        List<UnitState> states = simulator.simulate(state, defaultPlan);
+        double defaultDanger = dangerFactor(me, states);
         if (defaultDanger <= 0) {
             return null;
         }
@@ -553,13 +594,13 @@ public class MyStrategy {
                 }
             }
         }
-        Set<Plan> plans = genDodgePlans(steps);
+        Set<Plan> plans = genDodgePlans(me, steps);
 
         double minDanger = Double.POSITIVE_INFINITY;
         Plan bestPlan = null;
         for (Plan plan : plans) {
             List<UnitState> dodgeStates = simulator.simulate(state, plan);
-            double danger = dangerFactor(dodgeStates);
+            double danger = dangerFactor(me, dodgeStates);
             if (danger < minDanger) {
                 minDanger = danger;
                 bestPlan = plan;
@@ -572,10 +613,10 @@ public class MyStrategy {
             debug.drawSquare(st.position, 0.1, GREEN);
         }/**/
         lastDodgePlan.put(me.getId(), bestPlan);
-        return bestPlan.get(0);
+        return bestPlan;
     }
 
-    private Set<Plan> genDodgePlans(int steps) {
+    private Set<Plan> genDodgePlans(Unit me, int steps) {
         Set<Plan> plans = new LinkedHashSet<>();
         addFollowUpPlans(plans, lastDodgePlan.get(me.getId()), steps);
         for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
@@ -620,7 +661,7 @@ public class MyStrategy {
         }
     }
 
-    private double dangerFactor(List<UnitState> states) {
+    private double dangerFactor(Unit me, List<UnitState> states) {
         double minAllowedDist = 0.5;
         double danger = 0;
         for (Bullet bullet : game.getBullets()) {
@@ -722,7 +763,7 @@ public class MyStrategy {
         }
     }
 
-    private Point healthPackTargetPoint(LootBox healthPack, Unit enemy) {
+    private Point healthPackTargetPoint(Unit me, LootBox healthPack, Unit enemy) {
         Point hpPos = new Point(healthPack.getPosition());
         if (me.getHealth() < HEALTHPACK_THRESHOLD) {
             return hpPos;
@@ -743,38 +784,21 @@ public class MyStrategy {
         return new Point(targetX, hpPos.y);
     }
 
-    private boolean enoughTimeToGetTo(int platformFloor) {
-        double curY = me.getPosition().getY();
-        double remainingHeight = me.getJumpState().getSpeed() * me.getJumpState().getMaxTime();
-        return (int) (curY + remainingHeight) >= platformFloor + 1;
-    }
-
-    private int findPlatformAboveFloor() {
-        int x = (int) me.getPosition().getX();
-        int y = (int) me.getPosition().getY();
-        for (int j = y; j < map[0].length; j++) {
-            if (map[x][j] == PLATFORM) {
-                return j;
-            }
-        }
-        return -1;
-    }
-
-    private boolean shouldShoot(Unit enemy) {
+    private boolean shouldShoot(Unit me, Unit enemy) {
         Weapon weapon = me.getWeapon();
         if (weapon == null) {
             return false;
         }
-        if (!inLineOfSight(enemy)) {
+        if (!inLineOfSight(me, enemy)) {
             return false;
         }
-        if (canExplodeMyselfWithBazooka()) {
+        if (canExplodeMyselfWithBazooka(me)) {
             return false;
         }
-        return goodSpread(enemy, weapon);
+        return goodSpread(me, enemy, weapon);
     }
 
-    private boolean canExplodeMyselfWithBazooka() {
+    private boolean canExplodeMyselfWithBazooka(Unit me) {
         Weapon weapon = me.getWeapon();
         if (weapon.getTyp() != ROCKET_LAUNCHER) {
             return false;
@@ -782,10 +806,10 @@ public class MyStrategy {
         debug.showSpread(me);
         double angle = weapon.getLastAngle() == null ? 0 : weapon.getLastAngle();
         double spread = weapon.getSpread();
-        return canExplodeMyselfWithBazooka(angle + spread) || canExplodeMyselfWithBazooka(angle - spread);
+        return canExplodeMyselfWithBazooka(me, angle + spread) || canExplodeMyselfWithBazooka(me, angle - spread);
     }
 
-    private boolean canExplodeMyselfWithBazooka(double angle) {
+    private boolean canExplodeMyselfWithBazooka(Unit me, double angle) {
         Point bulletPos = muzzlePoint(me);
         BulletParams bullet = me.getWeapon().getParams().getBullet();
         double speedPerTick = simulator.toTickSpeed(bullet.getSpeed());
@@ -803,7 +827,7 @@ public class MyStrategy {
         return false;
     }
 
-    private boolean inLineOfSight(Unit enemy) {
+    private boolean inLineOfSight(Unit me, Unit enemy) {
         return inLineOfSight(muzzlePoint(me), map, me.getWeapon(), enemy);
     }
 
@@ -829,7 +853,7 @@ public class MyStrategy {
         return Utils.tileAtPoint(map, x, y);
     }
 
-    private boolean goodSpread(Unit enemy, Weapon weapon) { // todo rework
+    private boolean goodSpread(Unit me, Unit enemy, Weapon weapon) { // todo rework
         if (true) {
             return true;
         }/**/
@@ -847,26 +871,14 @@ public class MyStrategy {
         return new Point(unit).add(new Point(0, unit.getSize().getY() / 2));
     }
 
-
-    private double getVelocity(Point targetPos) {
-        double r = targetPos.x - me.getPosition().getX();
-        if (r > simulator.tickSpeed) {
-            return SPEED;
-        }
-        if (r < -simulator.tickSpeed) {
-            return -SPEED;
-        }
-        return simulator.fromTickSpeed(r);
-    }
-
-    private Vec2Double aim(Unit enemy) {
+    private Vec2Double aim(Unit me, Unit enemy) {
         return new Vec2Double(
                 enemy.getPosition().getX() - me.getPosition().getX(),
                 enemy.getPosition().getY() - me.getPosition().getY()
         );
     }
 
-    private LootBox chooseTargetBonus(Unit enemy) {
+    private LootBox chooseTargetBonus(Unit me, Unit enemy) {
         Map<Class<? extends Item>, List<LootBox>> map = Stream.of(game.getLootBoxes())
                 .collect(Collectors.groupingBy(b -> b.getItem().getClass()));
         List<LootBox> weapons = map.getOrDefault(Item.Weapon.class, Collections.emptyList());
@@ -874,13 +886,13 @@ public class MyStrategy {
         List<LootBox> mines = map.getOrDefault(Item.Mine.class, Collections.emptyList());
 
         if (me.getWeapon() == null || me.getWeapon().getTyp() == ROCKET_LAUNCHER) {
-            return chooseWeapon(weapons);
+            return chooseWeapon(me, weapons);
         } else {
-            return chooseHealthPack(healthPacks, enemy);
+            return chooseHealthPack(me, healthPacks, enemy);
         }
     }
 
-    private LootBox chooseHealthPack(List<LootBox> healthPacks, Unit enemy) {
+    private LootBox chooseHealthPack(Unit me, List<LootBox> healthPacks, Unit enemy) {
         double centerX = map.length / 2.0;
         return healthPacks.stream()
                 .min(
@@ -892,7 +904,7 @@ public class MyStrategy {
                 .orElse(null);
     }
 
-    private LootBox chooseWeapon(List<LootBox> weapons) {
+    private LootBox chooseWeapon(Unit me, List<LootBox> weapons) {
         return weapons.stream()
                 .filter(w -> getType(w) != ROCKET_LAUNCHER)
                 .min(Comparator.comparing(w -> dist(w.getPosition(), me.getPosition())))
@@ -903,17 +915,9 @@ public class MyStrategy {
         return ((Item.Weapon) lb.getItem()).getWeaponType();
     }
 
-    private Unit chooseEnemy() {
-        Unit nearestEnemy = null;
-        for (Unit other : game.getUnits()) {
-            if (other.getPlayerId() != me.getPlayerId()) {
-                if (nearestEnemy == null || sqrDist(me.getPosition(),
-                        other.getPosition()) < sqrDist(me.getPosition(), nearestEnemy.getPosition())) {
-                    nearestEnemy = other;
-                }
-            }
-        }
-        return nearestEnemy;
+    private Unit chooseEnemy(Unit me) {
+        return enemies.stream()
+                .min(Comparator.comparing(e -> dist(e, me))).get();
     }
 
     private List<Point> findStablePoints() {
