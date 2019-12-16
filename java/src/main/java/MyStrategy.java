@@ -24,6 +24,7 @@ public class MyStrategy {
     public static final int HEALTHPACK_THRESHOLD = 75;
 
     final boolean fake;
+    final boolean local;
     final boolean bazookaOnly = false;
 
     Unit me;
@@ -33,6 +34,7 @@ public class MyStrategy {
 
     Simulator simulator;
     List<Point> stablePoints;
+    List<Unit> myTeam;
 
     // things different for different units
     Map<Integer, Plan> lastDodgePlan = new HashMap<>();
@@ -40,26 +42,22 @@ public class MyStrategy {
 
     public MyStrategy() {
         fake = false;
+        local = false;
     }
 
-    public MyStrategy(boolean fake) {
+    public MyStrategy(boolean fake, boolean local) {
         this.fake = fake;
+        this.local = local;
     }
 
     public UnitAction getAction(Unit me, Game game, Debug debug0) {
         this.me = me;
         this.game = game;
-        this.debug = fake ? new MyDebugStub() : new MyDebugImpl(debug0);
-        this.map = game.getLevel().getTiles();
-        fixBorders(map);
+        this.debug = (local && !fake) ? new MyDebugImpl(debug0) : new MyDebugStub();
         if (simulator == null) {
-            simulator = new Simulator(
-                    map,
-                    (int) game.getProperties().getTicksPerSecond(),
-                    game.getProperties().getUpdatesPerTick()
-            );
-            stablePoints = findStablePoints();
+            initZeroTick();
         }
+        initCommon();
 
 //        for (Point p : stablePoints) {
 //            debug.drawSquare(p, 0.05, GREEN);
@@ -93,6 +91,23 @@ public class MyStrategy {
                 swap,
                 plantMine
         );
+    }
+
+    private void initZeroTick() {
+        map = game.getLevel().getTiles();
+        fixBorders(map);
+        simulator = new Simulator(
+                map,
+                (int) game.getProperties().getTicksPerSecond(),
+                game.getProperties().getUpdatesPerTick()
+        );
+        stablePoints = findStablePoints();
+    }
+
+    private void initCommon() {
+        myTeam = Stream.of(game.getUnits())
+                .filter(u -> u.getPlayerId() == me.getPlayerId())
+                .collect(Collectors.toList());
     }
 
     private UnitAction noop() {
@@ -336,8 +351,11 @@ public class MyStrategy {
 
     private Set<Plan> genMovementPlans(Point targetPos) {
         int steps = 64;
+        if (myTeam.size() > 1) {
+            steps /= 4;
+        }
         Set<Plan> plans = new LinkedHashSet<>();
-        addFollowUpPlans(plans, lastMovementPlan.get(me.getId()));
+        addFollowUpPlans(plans, lastMovementPlan.get(me.getId()), steps);
 
         double speedToTarget = simulator.clampSpeed(simulator.fromTickSpeed(targetPos.x - me.getPosition().getX()));
         plans.add(plan(1, speedToTarget, false, false).add(steps - 1, 0, false, false));
@@ -512,6 +530,9 @@ public class MyStrategy {
     private MoveAction tryDodgeBullets(MoveAction move) { // returns null if not in danger or can't dodge
         UnitState state = new UnitState(me);
         int steps = 50;
+        if (myTeam.size() > 1) {
+            steps /= 4;
+        }
         List<UnitState> states = simulator.simulate(state, plan(steps, move));
         double defaultDanger = dangerFactor(states);
         if (defaultDanger <= 0) {
@@ -556,7 +577,7 @@ public class MyStrategy {
 
     private Set<Plan> genDodgePlans(int steps) {
         Set<Plan> plans = new LinkedHashSet<>();
-        addFollowUpPlans(plans, lastDodgePlan.get(me.getId()));
+        addFollowUpPlans(plans, lastDodgePlan.get(me.getId()), steps);
         for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
             plans.add(
                     plan(standCnt, new MoveAction(0, false, false))
@@ -583,7 +604,7 @@ public class MyStrategy {
         return plans;
     }
 
-    private void addFollowUpPlans(Set<Plan> plans, Plan lastPlan) {
+    private void addFollowUpPlans(Set<Plan> plans, Plan lastPlan, int steps) {
         if (lastPlan == null) {
             return;
         }
@@ -593,7 +614,7 @@ public class MyStrategy {
                     if (jump && jumpDown) {
                         continue;
                     }
-                    plans.add(lastPlan.followUpPlan(new MoveAction(speed, jump, jumpDown)));
+                    plans.add(lastPlan.followUpPlan(new MoveAction(speed, jump, jumpDown), steps));
                 }
             }
         }

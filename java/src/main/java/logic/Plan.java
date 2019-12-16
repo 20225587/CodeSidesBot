@@ -34,7 +34,7 @@ public class Plan {
         return moves.get(index);
     }
 
-    public Plan followUpPlan(MoveAction move) {
+    public Plan followUpPlan(MoveAction move, int expectedLength) {
         Plan r = new Plan();
         r.moves.addAll(moves);
         r.moves.remove(0);
@@ -46,7 +46,7 @@ public class Plan {
         } else {
             r.history.set(0, new HistoryRecord(firstHr.n - 1, firstHr.move));
         }
-        r.add(1, move);
+        r.add(expectedLength - r.moves.size(), move);
         return r;
     }
 
