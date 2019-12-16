@@ -624,7 +624,7 @@ public class MyStrategy {
         double minAllowedDist = 0.5;
         double danger = 0;
         for (Bullet bullet : game.getBullets()) {
-            if (bullet.getPlayerId() == me.getPlayerId() && bullet.getWeaponType() != ROCKET_LAUNCHER) {
+            if (bullet.getUnitId() == me.getId() && bullet.getWeaponType() != ROCKET_LAUNCHER) {
                 continue;
             }
             List<Point> bulletPositions = simulator.simulateBullet(bullet, states.size());
