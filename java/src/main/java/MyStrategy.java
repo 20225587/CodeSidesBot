@@ -41,6 +41,7 @@ public class MyStrategy {
     Map<Integer, Plan> lastDodgePlan = new HashMap<>();
     Map<Integer, Plan> lastMovementPlan = new HashMap<>();
     Map<Integer, UnitAction> plannedMoves = new HashMap<>();
+    Map<Integer, Double> initialX = new HashMap<>();
 
     public MyStrategy() {
         fake = false;
@@ -58,10 +59,11 @@ public class MyStrategy {
         }/**/
         this.game = game;
         this.debug = (local && !fake) ? new MyDebugImpl(debug0) : new MyDebugStub();
+
+        initCommon(me);
         if (simulator == null) {
             initZeroTick();
         }
-        initCommon(me);
         if (previousTick != game.getCurrentTick()) {
             think();
         }
@@ -84,7 +86,8 @@ public class MyStrategy {
     private Intention getIntention(Unit me, Intention primaryIntention) {
         Unit enemy = chooseEnemy(me);
         LootBox targetBonus = chooseTargetBonus(me, enemy, primaryIntention);
-        PlanAndStates ps = move(me, enemy, targetBonus, primaryIntention);
+        Point targetPos = chooseTargetPosition(me, enemy, targetBonus, primaryIntention);
+        PlanAndStates ps = move(me, targetPos, primaryIntention);
         Vec2Double aimDir = aim(me, enemy);
         boolean shoot = shouldShoot(me, enemy);
 
@@ -103,7 +106,7 @@ public class MyStrategy {
                 swap,
                 plantMine
         );
-        return new Intention(ps.plan, ps.states, unitAction, targetBonus);
+        return new Intention(ps.plan, ps.states, unitAction, targetBonus, targetPos);
     }
 
     static class Intention {
@@ -111,12 +114,14 @@ public class MyStrategy {
         final List<UnitState> states;
         final UnitAction unitAction;
         final LootBox targetBonus;
+        final Point targetPoint;
 
-        Intention(Plan plan, List<UnitState> states, UnitAction unitAction, LootBox targetBonus) {
+        Intention(Plan plan, List<UnitState> states, UnitAction unitAction, LootBox targetBonus, Point targetPoint) {
             this.plan = plan;
             this.states = states;
             this.unitAction = unitAction;
             this.targetBonus = targetBonus;
+            this.targetPoint = targetPoint;
         }
     }
 
@@ -135,7 +140,7 @@ public class MyStrategy {
         return myTeam.stream()
                 .min(Comparator.comparing((Unit u) -> u.getWeapon() != null)
                         .thenComparing(Unit::getHealth)
-                        .thenComparing(u -> abs(u.getPosition().getX() - centerX)))
+                        .thenComparing(u -> abs(initialX.get(u.getId()) - centerX)))
                 .get();
     }
 
@@ -152,6 +157,9 @@ public class MyStrategy {
                 game.getProperties().getUpdatesPerTick()
         );
         stablePoints = findStablePoints();
+        for (Unit u : myTeam) {
+            initialX.put(u.getId(), u.getPosition().getX());
+        }
     }
 
     private void initCommon(Unit me) {
@@ -226,8 +234,8 @@ public class MyStrategy {
         return plan;
     }
 
-    private PlanAndStates move(Unit me, Unit enemy, LootBox targetBonus, Intention primaryIntention) {
-        PlanAndStates plan = move0(me, enemy, targetBonus, primaryIntention);
+    private PlanAndStates move(Unit me, Point targetPos, Intention primaryIntention) {
+        PlanAndStates plan = move0(me, primaryIntention, targetPos);
         PlanAndStates dodge = tryDodgeBullets(me, plan, primaryIntention);
         if (dodge != null) {
             return dodge;
@@ -235,8 +243,7 @@ public class MyStrategy {
         return plan;
     }
 
-    private PlanAndStates move0(Unit me, Unit enemy, LootBox targetBonus, Intention primaryIntention) {
-        Point targetPos = chooseTargetPosition(me, enemy, targetBonus);
+    private PlanAndStates move0(Unit me, Intention primaryIntention, Point targetPos) {
         UnitState start = new UnitState(me);
         if (targetPos == null) {
             Plan plan = plan(getPlanLength(), new MoveAction(0, false, false));
@@ -472,7 +479,7 @@ public class MyStrategy {
     Random rnd = new Random(12);
     Point target;
 
-    private Point chooseTargetPosition(Unit me, Unit enemy, LootBox targetBonus) {
+    private Point chooseTargetPosition(Unit me, Unit enemy, LootBox targetBonus, Intention primaryIntention) {
         /*if (true) {
             if (!iAmFirst(me)) {
                 return new Point(map.length - 2, 1);
@@ -486,7 +493,7 @@ public class MyStrategy {
         } else if (targetBonus != null && targetBonus.getItem() instanceof Item.Weapon) {
             targetPos = new Point(targetBonus.getPosition());
         } else {
-            targetPos = findShootingPosition(me, enemy);
+            targetPos = findShootingPosition(me, enemy, primaryIntention);
         }
         return targetPos;
     }
@@ -546,7 +553,7 @@ public class MyStrategy {
                 .findAny().get();
     }
 
-    private Point findShootingPosition(Unit me, Unit enemy) {
+    private Point findShootingPosition(Unit me, Unit enemy, Intention primaryIntention) {
         Point enemyPos = new Point(enemy);
         if (game.getCurrentTick() > game.getProperties().getMaxTickCount() * 0.75 && !iAmWinning(me)) {
             return enemyPos;
@@ -555,15 +562,18 @@ public class MyStrategy {
             debug.drawSquare(new Point(map.length / 2.0, map[0].length / 2.0), 2, RED);
             return enemyPos;
         }/**/
-        return getSafeShootingPosition(me, enemy);
+        return getSafeShootingPosition(me, enemy, primaryIntention);
     }
 
-    private Point getSafeShootingPosition(Unit me, Unit enemy) {
+    private Point getSafeShootingPosition(Unit me, Unit enemy, Intention primaryIntention) {
         double maxDist = Double.NEGATIVE_INFINITY;
         Point bestPoint = null;
         double myX = me.getPosition().getX();
         double enemyX = enemy.getPosition().getX();
         for (Point p : stablePoints) {
+            if (primaryIntention != null && unitsIntersect(primaryIntention.targetPoint, p)) {
+                continue;
+            }
             Point muzzlePoint = new Point(p.x, p.y + HEIGHT / 2);
             if (inLineOfSight(muzzlePoint, map, me.getWeapon(), enemy)) {
                 double dist = dist(muzzlePoint, enemy);
@@ -1011,7 +1021,7 @@ public class MyStrategy {
 
     private List<Point> findStablePoints() {
         List<Point> r = new ArrayList<>();
-        double delta = 0.5;
+        double delta = 0.25;
         for (double x = 1 + WIDTH / 2; x < map.length - 1 - WIDTH / 2; x = roundIfClose(x + delta)) {
             for (double y = 1; y < map[0].length - 1 - HEIGHT; y = roundIfClose(y + delta)) {
                 if (isStable(x, y)) {
