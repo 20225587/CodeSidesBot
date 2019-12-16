@@ -83,7 +83,7 @@ public class MyStrategy {
 
     private Intention getIntention(Unit me, Intention primaryIntention) {
         Unit enemy = chooseEnemy(me);
-        LootBox targetBonus = chooseTargetBonus(me, enemy);
+        LootBox targetBonus = chooseTargetBonus(me, enemy, primaryIntention);
         PlanAndStates ps = move(me, enemy, targetBonus, primaryIntention);
         Vec2Double aimDir = aim(me, enemy);
         boolean shoot = shouldShoot(me, enemy);
@@ -911,8 +911,9 @@ public class MyStrategy {
         );
     }
 
-    private LootBox chooseTargetBonus(Unit me, Unit enemy) {
+    private LootBox chooseTargetBonus(Unit me, Unit enemy, Intention primaryIntention) {
         Map<Class<? extends Item>, List<LootBox>> map = Stream.of(game.getLootBoxes())
+                .filter(b -> !bonusTaken(b, primaryIntention))
                 .collect(Collectors.groupingBy(b -> b.getItem().getClass()));
         List<LootBox> weapons = map.getOrDefault(Item.Weapon.class, Collections.emptyList());
         List<LootBox> healthPacks = map.getOrDefault(Item.HealthPack.class, Collections.emptyList());
@@ -923,6 +924,16 @@ public class MyStrategy {
         } else {
             return chooseHealthPack(me, healthPacks, enemy);
         }
+    }
+
+    private boolean bonusTaken(LootBox b, Intention primaryIntention) {
+        if (primaryIntention == null) {
+            return false;
+        }
+        if (primaryIntention.targetBonus == null) {
+            return false;
+        }
+        return dist(b.getPosition(), primaryIntention.targetBonus.getPosition()) < 1e-9;
     }
 
     private LootBox chooseHealthPack(Unit me, List<LootBox> healthPacks, Unit enemy) {
