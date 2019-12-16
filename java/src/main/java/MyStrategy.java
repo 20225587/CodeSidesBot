@@ -131,7 +131,12 @@ public class MyStrategy {
     }
 
     private Unit getPrimary() {
-        return myTeam.stream().min(Comparator.comparing(Unit::getHealth)).get();
+        double centerX = map.length / 2.0;
+        return myTeam.stream()
+                .min(Comparator.comparing((Unit u) -> u.getWeapon() != null)
+                        .thenComparing(Unit::getHealth)
+                        .thenComparing(u -> abs(u.getPosition().getX() - centerX)))
+                .get();
     }
 
     private Unit getSecondary(Unit primary) {
