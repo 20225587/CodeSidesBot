@@ -798,11 +798,11 @@ public class MyStrategy {
                 }
             }
 
-            int damage = bullet.getDamage();
+            int collisionDamage = bullet.getDamage();
             if (explosion != null) {
-                damage += explosion.getDamage();
+                collisionDamage += explosion.getDamage();
             }
-            danger += getDanger(minAllowedDist, minDist, damage);
+            danger += getDanger(minAllowedDist, minDist, collisionDamage);
         }
         danger += minesDangerFactor(states, minAllowedDist);
         if (primaryIntention != null && collides(states, primaryIntention.states)) {
