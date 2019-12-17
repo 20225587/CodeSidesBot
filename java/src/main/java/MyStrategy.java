@@ -36,6 +36,7 @@ public class MyStrategy {
     List<Point> stablePoints;
     List<Unit> myTeam;
     List<Unit> enemies;
+    List<BulletTrajectory> bulletTrajectories;
     int previousTick = -1;
 
     // things different for different units
@@ -226,6 +227,9 @@ public class MyStrategy {
                 .collect(Collectors.toList());
         enemies = Stream.of(game.getUnits())
                 .filter(u -> u.getPlayerId() != me.getPlayerId())
+                .collect(Collectors.toList());
+        bulletTrajectories = Stream.of(game.getBullets())
+                .map(b -> simulator.simulateBullet(b, 100500))
                 .collect(Collectors.toList());
     }
 
@@ -677,29 +681,33 @@ public class MyStrategy {
     private double dangerFactor(Unit me, List<UnitState> states) {
         double minAllowedDist = 0.5;
         double danger = 0;
-        for (Bullet bullet : game.getBullets()) {
+        for (int bulletIndex = 0; bulletIndex < game.getBullets().length; bulletIndex++) {
+            Bullet bullet = game.getBullets()[bulletIndex];
             if (bullet.getUnitId() == me.getId() && bullet.getWeaponType() != ROCKET_LAUNCHER) {
                 continue;
             }
-            List<Point> bulletPositions = simulator.simulateBullet(bullet, states.size());
+            BulletTrajectory trajectory = bulletTrajectories.get(bulletIndex);
             double minDist = Double.POSITIVE_INFINITY;
 
             ExplosionParams explosion = bullet.getExplosionParams();
-            for (int i = 0; i < bulletPositions.size(); i++) {
-                Point bulletPos = bulletPositions.get(i);
+            for (int i = 0; i < min(trajectory.size(), states.size()); i++) {
+                Point bulletPos = trajectory.get(i);
                 Point myPos = states.get(i).position;
                 double dist = distToBullet(myPos, bulletPos, bullet.getSize());
                 minDist = min(minDist, dist);
                 if (dist == 0) {
                     break;
                 }
-                if (bulletCollidesWithWall(map, bulletPos, bullet.getSize())) {
-                    if (explosion != null) {
-                        double distToExplosion = distToBullet(myPos, bulletPos, explosion.getRadius() * 2);
-                        danger += getDanger(minAllowedDist, distToExplosion, explosion.getDamage());
-                    }
-                    break;
-                }
+            }
+
+            if (minDist > 0 &&
+                    trajectory.collisionPos != null &&
+                    explosion != null &&
+                    trajectory.size() < states.size()
+            ) {
+                Point myPos = states.get(trajectory.size()).position;
+                double distToExplosion = distToBullet(myPos, trajectory.collisionPos, explosion.getRadius() * 2);
+                danger += getDanger(minAllowedDist, distToExplosion, explosion.getDamage());
             }
 
             int collisionDamage = bullet.getDamage();
@@ -835,7 +843,7 @@ public class MyStrategy {
                 start,
                 Point.dir(shootAngle).mult(speed),
                 10
-        );
+        ).positions;
         for (Point bulletPosition : bulletPositions) {
             if (distToBullet(new Point(teammate), bulletPosition, bullet.getSize()) < 0.1) {
                 return true;

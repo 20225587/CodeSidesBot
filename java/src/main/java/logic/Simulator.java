@@ -275,7 +275,7 @@ public class Simulator {
         return speed * ticksPerSecond;
     }
 
-    public List<Point> simulateBullet(Bullet bullet, int ticks) {
+    public BulletTrajectory simulateBullet(Bullet bullet, int ticks) {
         return simulateBullet(
                 new Point(bullet.getPosition()),
                 new Point(bullet.getVelocity()),
@@ -283,14 +283,19 @@ public class Simulator {
         );
     }
 
-    public List<Point> simulateBullet(Point start, Point speed, int ticks) {
+    public BulletTrajectory simulateBullet(Point start, Point speed, int maxTicks) {
         Point curPos = start;
         Point tickSpeed = speed.mult(tickDuration);
+        Point collisionPos = null;
         List<Point> r = new ArrayList<>();
-        for (int i = 0; i < ticks; i++) {
+        for (int i = 0; i < maxTicks; i++) {
             curPos = curPos.add(tickSpeed);
+            if (tileAtPoint(map, curPos) == WALL) {
+                collisionPos = curPos;
+                break;
+            }
             r.add(curPos);
         }
-        return r;
+        return new BulletTrajectory(r, collisionPos);
     }
 }
