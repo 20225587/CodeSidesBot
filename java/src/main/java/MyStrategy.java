@@ -294,33 +294,25 @@ public class MyStrategy {
 
     private PlanAndStates move(Unit me, Point targetPos, Intention primaryIntention) {
         UnitState start = new UnitState(me);
-        if (targetPos == null) { // это в каком случае вообще бывает?
-            if (true) {
-                throw new RuntimeException("target pos == null");
+        debug.drawLine(new Point(me), targetPos, WHITE);
+        Set<Plan> plans = genMovementPlans(me, targetPos);
+        double minEval = Double.POSITIVE_INFINITY;
+        Plan bestPlan = null;
+        List<UnitState> bestStates = null;
+        int[][] dfsDist = dfs(targetPos);
+        for (Plan plan : plans) {
+            List<UnitState> states = simulator.simulate(start, plan);
+            double eval = evalDist(states, dfsDist, targetPos, primaryIntention);
+            eval += dangerFactor(me, states);
+            if (eval < minEval) {
+                minEval = eval;
+                bestStates = states;
+                bestPlan = plan;
             }
-            Plan plan = plan(getPlanLength(), new MoveAction(0, false, false));
-            return new PlanAndStates(plan, simulator.simulate(start, plan));
-        } else {
-            debug.drawLine(new Point(me), targetPos, WHITE);
-            Set<Plan> plans = genMovementPlans(me, targetPos);
-            double minEval = Double.POSITIVE_INFINITY;
-            Plan bestPlan = null;
-            List<UnitState> bestStates = null;
-            int[][] dfsDist = dfs(targetPos);
-            for (Plan plan : plans) {
-                List<UnitState> states = simulator.simulate(start, plan);
-                double eval = evalDist(states, dfsDist, targetPos, primaryIntention);
-                eval += dangerFactor(me, states);
-                if (eval < minEval) {
-                    minEval = eval;
-                    bestStates = states;
-                    bestPlan = plan;
-                }
-            }
-            showStates(bestStates, GREEN);
-            lastMovementPlan.put(me.getId(), bestPlan);
-            return new PlanAndStates(bestPlan, bestStates);
         }
+        showStates(bestStates, GREEN);
+        lastMovementPlan.put(me.getId(), bestPlan);
+        return new PlanAndStates(bestPlan, bestStates);
     }
 
     private void showStates(List<UnitState> states, ColorFloat color) {
