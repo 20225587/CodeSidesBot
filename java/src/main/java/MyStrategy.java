@@ -39,7 +39,6 @@ public class MyStrategy {
     int previousTick = -1;
 
     // things different for different units
-    Map<Integer, Plan> lastDodgePlan = new HashMap<>();
     Map<Integer, Plan> lastMovementPlan = new HashMap<>();
     Map<Integer, UnitAction> plannedMoves = new HashMap<>();
     Map<Integer, Double> initialX = new HashMap<>();
@@ -294,33 +293,26 @@ public class MyStrategy {
     }
 
     private PlanAndStates move(Unit me, Point targetPos, Intention primaryIntention) {
-        PlanAndStates plan = move0(me, primaryIntention, targetPos);
-        PlanAndStates dodge = tryDodgeBullets(me, plan, primaryIntention);
-        if (dodge != null) {
-            return dodge;
-        }
-        return plan;
-    }
-
-    private PlanAndStates move0(Unit me, Intention primaryIntention, Point targetPos) {
         UnitState start = new UnitState(me);
-        if (targetPos == null) {
+        if (targetPos == null) { // это в каком случае вообще бывает?
+            if (true) {
+                throw new RuntimeException("target pos == null");
+            }
             Plan plan = plan(getPlanLength(), new MoveAction(0, false, false));
             return new PlanAndStates(plan, simulator.simulate(start, plan));
         } else {
             debug.drawLine(new Point(me), targetPos, WHITE);
             Set<Plan> plans = genMovementPlans(me, targetPos);
-            double minDist = Double.POSITIVE_INFINITY;
+            double minEval = Double.POSITIVE_INFINITY;
             Plan bestPlan = null;
             List<UnitState> bestStates = null;
             int[][] dfsDist = dfs(targetPos);
-            //print(dfsDist);
             for (Plan plan : plans) {
                 List<UnitState> states = simulator.simulate(start, plan);
-                //debug.drawSquare(states.get(states.size() - 1).position, 0.1, BLUE);
-                double dist = evalDist(states, dfsDist, targetPos, primaryIntention);
-                if (dist < minDist) {
-                    minDist = dist;
+                double eval = evalDist(states, dfsDist, targetPos, primaryIntention);
+                eval += dangerFactor(me, states);
+                if (eval < minEval) {
+                    minEval = eval;
                     bestStates = states;
                     bestPlan = plan;
                 }
@@ -348,6 +340,7 @@ public class MyStrategy {
             }
             r = min(r, dist);
         }
+        r /= 100; // todo приводить их к общей оценке в каком-то одном месте
         final double collisionPenalty = 100;
         if (collidesWithEnemy) {
             r += collisionPenalty;
@@ -517,6 +510,7 @@ public class MyStrategy {
                 }
             }
         }
+        plans.addAll(genDodgePlans(me, steps));
         verifyLength(plans, steps);
         return plans;
     }
@@ -665,69 +659,8 @@ public class MyStrategy {
         return weapon.getFireTimer();
     }
 
-    private boolean canBeInTile(int x, int y) {
-        if (map[x][y] == WALL) {
-            return false;
-        }
-        if (map[x][y] == LADDER) {
-            return true;
-        }
-        if (map[x][y - 1] == WALL || map[x][y - 1] == PLATFORM || map[x][y - 1] == LADDER) {
-            return true;
-        }
-        return false;
-    }
-
-    private PlanAndStates tryDodgeBullets(Unit me, PlanAndStates defaultPlan, Intention primaryIntention) { // returns null if not in danger or can't dodge
-        UnitState state = new UnitState(me);
-        int steps = getPlanLength();
-        List<UnitState> states = defaultPlan.states;
-        double defaultDanger = dangerFactor(me, states, primaryIntention);
-        if (defaultDanger <= 0) {
-            return null;
-        }
-        for (Bullet bullet : game.getBullets()) {
-            if (bullet.getPlayerId() == me.getPlayerId()) {
-                continue;
-            }
-            List<Point> bulletPositions = simulator.simulateBullet(bullet, steps);
-            for (Point p : bulletPositions) {
-                debug.drawSquare(p, bullet.getSize(), RED);
-                if (bulletCollidesWithWall(map, p, bullet.getSize())) {
-                    if (bullet.getExplosionParams() != null) {
-                        debug.drawSquare(p, bullet.getExplosionParams().getRadius() * 2, new ColorFloat(1f, 0f, 0f, 0.5f));
-                    }
-                    break;
-                }
-            }
-        }
-        Set<Plan> plans = genDodgePlans(me, steps);
-
-        double minDanger = Double.POSITIVE_INFINITY;
-        Plan bestPlan = null;
-        List<UnitState> bestStates = null;
-        for (Plan plan : plans) {
-            List<UnitState> dodgeStates = simulator.simulate(state, plan);
-            double danger = dangerFactor(me, dodgeStates, primaryIntention);
-            if (danger < minDanger) {
-                minDanger = danger;
-                bestPlan = plan;
-                bestStates = dodgeStates;
-            }
-        }
-        if (minDanger >= defaultDanger) {
-            return null;
-        }
-        /*for (UnitState st : simulator.simulate(state, bestPlan)) {
-            debug.drawSquare(st.position, 0.1, GREEN);
-        }/**/
-        lastDodgePlan.put(me.getId(), bestPlan);
-        return new PlanAndStates(bestPlan, bestStates);
-    }
-
     private Set<Plan> genDodgePlans(Unit me, int steps) {
         Set<Plan> plans = new LinkedHashSet<>();
-        addFollowUpPlans(plans, lastDodgePlan.get(me.getId()), steps);
         for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
             plans.add(
                     plan(standCnt, new MoveAction(0, false, false))
@@ -770,7 +703,7 @@ public class MyStrategy {
         }
     }
 
-    private double dangerFactor(Unit me, List<UnitState> states, Intention primaryIntention) {
+    private double dangerFactor(Unit me, List<UnitState> states) {
         double minAllowedDist = 0.5;
         double danger = 0;
         for (Bullet bullet : game.getBullets()) {
@@ -805,9 +738,6 @@ public class MyStrategy {
             danger += getDanger(minAllowedDist, minDist, collisionDamage);
         }
         danger += minesDangerFactor(states, minAllowedDist);
-        if (primaryIntention != null && collides(states, primaryIntention.states)) {
-            danger += 100;
-        }
         return danger;
     }
 
@@ -838,7 +768,7 @@ public class MyStrategy {
             return damage;
         }
         if (dist < minAllowedDist) {
-            return minAllowedDist - dist;
+            return (1 - dist / minAllowedDist) * 2;
         }
         return 0;
     }
