@@ -1,9 +1,6 @@
 package logic;
 
-import model.ColorFloat;
-import model.Tile;
-import model.Unit;
-import model.Vec2Double;
+import model.*;
 
 import static java.lang.Math.*;
 import static logic.Simulator.*;
@@ -45,6 +42,10 @@ public class Utils {
 
     public static double dist(Point a, Point b) {
         return dist(a.x, a.y, b.x, b.y);
+    }
+
+    public static double dist(Unit a, LootBox b) {
+        return dist(a.getPosition(), b.getPosition());
     }
 
     public static Tile tileAtPoint(Tile[][] map, double x, double y) {

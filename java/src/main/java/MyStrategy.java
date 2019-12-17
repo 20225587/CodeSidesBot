@@ -987,8 +987,19 @@ public class MyStrategy {
     private LootBox chooseWeapon(Unit me, List<LootBox> weapons) {
         return weapons.stream()
                 .filter(w -> getType(w) != ROCKET_LAUNCHER)
-                .min(Comparator.comparing(w -> dist(w.getPosition(), me.getPosition())))
+                .min(
+                        Comparator.comparing((LootBox w) -> dangerousLootBox(me, w))
+                                .thenComparing(w -> dist(w.getPosition(), me.getPosition()))
+                )
                 .orElse(null);
+    }
+
+    private boolean dangerousLootBox(Unit me, LootBox w) {
+        if (me.getWeapon() != null) {
+            return false;
+        }
+        double dist = dist(me, w);
+        return enemies.stream().anyMatch(e -> dist(e, me) < dist && dist(e, w) < dist);
     }
 
     private WeaponType getType(LootBox lb) {
