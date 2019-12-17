@@ -631,7 +631,7 @@ public class MyStrategy {
                 continue;
             }
             Point muzzlePoint = new Point(p.x, p.y + HEIGHT / 2);
-            if (inLineOfSight(muzzlePoint, map, me.getWeapon(), enemy)) {
+            if (inLineOfSight(muzzlePoint, me.getWeapon(), enemy)) {
                 double dist = dist(muzzlePoint, enemy);
                 boolean sameSide = abs(myX - enemyX) < 1 || (myX < enemyX) == (muzzlePoint.x < enemyX);
                 if (!sameSide) {
@@ -889,21 +889,17 @@ public class MyStrategy {
     }
 
     private boolean inLineOfSight(Unit me, Unit enemy) {
-        return inLineOfSight(muzzlePoint(me), map, me.getWeapon(), enemy);
+        return inLineOfSight(muzzlePoint(me), me.getWeapon(), enemy);
     }
 
-    private static boolean inLineOfSight(Point a, Tile[][] map, Weapon weapon, Unit enemy) {
-        Point b = muzzlePoint(enemy);
-        boolean blocked = false;
-        int n = 1000;
-        Point delta = b.minus(a).mult(1.0 / n);
-        for (int i = 0; i < n; i++) {
-            Point t = a.add(delta.mult(i));
-            if (bulletCollidesWithWall(map, t, weapon.getParams().getBullet().getSize())) {
-                blocked = true;
-            }
-        }
-        return !blocked;
+    private boolean inLineOfSight(Point from, Weapon weapon, Unit enemy) {
+        Point to = muzzlePoint(enemy);
+        BulletParams bullet = weapon.getParams().getBullet();
+        double speed = bullet.getSpeed();
+        Point speedV = to.minus(from).norm().mult(speed);
+        int ticksToReach = (int) ceil(dist(from, to) / (speed * simulator.tickDuration));
+        BulletTrajectory trajectory = simulator.simulateBullet(from, speedV, ticksToReach);
+        return trajectory.size() >= ticksToReach;
     }
 
     private Tile tileAtPoint(Point p) {

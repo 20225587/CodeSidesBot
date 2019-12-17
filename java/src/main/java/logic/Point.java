@@ -6,8 +6,7 @@ import model.Vec2Float;
 
 import java.util.Objects;
 
-import static java.lang.Math.cos;
-import static java.lang.Math.sin;
+import static java.lang.Math.*;
 
 public class Point {
     public final double x, y;
@@ -60,5 +59,14 @@ public class Point {
     @Override
     public int hashCode() {
         throw new RuntimeException("equals is broken!");
+    }
+
+    public Point norm() {
+        double len = len();
+        return new Point(x / len, y / len);
+    }
+
+    public double len() {
+        return sqrt(Utils.sqr(x) + Utils.sqr(y));
     }
 }
