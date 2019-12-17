@@ -510,7 +510,18 @@ public class MyStrategy {
                 }
             }
         }
-        plans.addAll(genDodgePlans(me, steps));
+        for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
+            plans.add(
+                    plan(standCnt, new MoveAction(0, false, false))
+                            .add(steps - standCnt, new MoveAction(0, true, false))
+            );
+        }
+        for (int upCnt = 0; upCnt <= steps; upCnt += 2) {
+            plans.add(
+                    plan(upCnt, new MoveAction(0, true, false))
+                            .add(steps - upCnt, new MoveAction(0, false, true))
+            );
+        }
         verifyLength(plans, steps);
         return plans;
     }
@@ -657,34 +668,6 @@ public class MyStrategy {
             return 0;
         }
         return weapon.getFireTimer();
-    }
-
-    private Set<Plan> genDodgePlans(Unit me, int steps) {
-        Set<Plan> plans = new LinkedHashSet<>();
-        for (int standCnt = 0; standCnt <= steps; standCnt += 2) {
-            plans.add(
-                    plan(standCnt, new MoveAction(0, false, false))
-                            .add(steps - standCnt, new MoveAction(0, true, false))
-            );
-        }
-        for (int upCnt = 0; upCnt <= steps; upCnt += 2) {
-            plans.add(
-                    plan(upCnt, new MoveAction(0, true, false))
-                            .add(steps - upCnt, new MoveAction(0, false, true))
-            );
-        }
-        for (double speed : new double[]{-SPEED, 0, SPEED}) {
-            for (boolean jump : new boolean[]{false, true}) {
-                for (boolean jumpDown : new boolean[]{false, true}) {
-                    if (jump && jumpDown) {
-                        continue;
-                    }
-                    plans.add(plan(steps, new MoveAction(speed, jump, jumpDown)));
-                }
-            }
-        }
-        verifyLength(plans, steps);
-        return plans;
     }
 
     private void addFollowUpPlans(Set<Plan> plans, Plan lastPlan, int steps) {
