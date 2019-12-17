@@ -1,5 +1,6 @@
 package logic;
 
+import model.ColorFloat;
 import model.Tile;
 import model.Unit;
 import model.Vec2Double;
@@ -101,5 +102,9 @@ public class Utils {
             }
             System.out.println();
         }
+    }
+
+    public static ColorFloat color(double r, double g, int b, int a) {
+        return new ColorFloat((float) r, (float) g, (float) b, (float) a);
     }
 }

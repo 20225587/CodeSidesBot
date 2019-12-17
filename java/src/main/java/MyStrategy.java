@@ -22,6 +22,7 @@ public class MyStrategy {
     public static final ColorFloat WHITE = new ColorFloat(1, 1, 1, 1);
     public static final double EXPLOSION_SIZE = 6;
     public static final int HEALTHPACK_THRESHOLD = 75;
+    public static final double STABLE_POINT_DELTA = 0.25;
 
     final boolean fake;
     final boolean local;
@@ -63,12 +64,70 @@ public class MyStrategy {
         initCommon(me);
         if (simulator == null) {
             initZeroTick();
+            //evaluateStablePoints();
         }
         if (previousTick != game.getCurrentTick()) {
             think();
         }
         previousTick = game.getCurrentTick();
         return plannedMoves.get(me.getId());
+    }
+
+    private void evaluateStablePoints() {
+        double mi = Double.POSITIVE_INFINITY;
+        double ma = Double.NEGATIVE_INFINITY;
+
+        for (Point p : stablePoints) {
+            double e = evaluateStablePoint(p);
+            mi = min(mi, e);
+            ma = max(ma, e);
+        }
+
+        for (Point p : stablePoints) {
+            double e = evaluateStablePoint(p);
+            double normE = normalize(e, mi, ma);
+            double size = STABLE_POINT_DELTA;
+            debug.drawSquare(
+                    p.add(new Point(-size / 2, -size / 2)),
+                    size,
+                    color(1 - normE, normE, 0, 1)
+            );
+        }
+    }
+
+    private double normalize(double e, double mi, double ma) {
+        return (e - mi) / (ma - mi);
+    }
+
+    private double evaluateStablePoint(Point p) {
+        double delta = 0.2;
+        int steps = 20;
+        double r = 0;
+        for (int dx = -steps; dx <= steps; dx++) {
+            for (int dy = -steps; dy <= steps; dy++) {
+                double x = p.x + dx * delta;
+                double y = p.y + dy * delta;
+                Tile tile = inside((int) x, (int) y) ? tileAtPoint(x, y) : WALL;
+                r += evalTile(tile);
+            }
+        }
+        return r;
+    }
+
+    private double evalTile(Tile tile) {
+        switch (tile) {
+            case LADDER:
+                return 1;
+            case PLATFORM:
+                return 0.75;
+            case EMPTY:
+                return 0.5;
+            case JUMP_PAD:
+                return 0.25;
+            case WALL:
+                return 0;
+        }
+        throw new RuntimeException();
     }
 
     private void think() {
@@ -585,6 +644,11 @@ public class MyStrategy {
                     maxDist = dist;
                     bestPoint = p;
                 }
+                /*double eval = evaluateStablePoint(p);
+                if (eval > maxEval) {
+                    maxEval = eval;
+                    bestPoint = p;
+                }*/
             }
         }
         return bestPoint;
@@ -1021,7 +1085,7 @@ public class MyStrategy {
 
     private List<Point> findStablePoints() {
         List<Point> r = new ArrayList<>();
-        double delta = 0.25;
+        double delta = STABLE_POINT_DELTA;
         for (double x = 1 + WIDTH / 2; x < map.length - 1 - WIDTH / 2; x = roundIfClose(x + delta)) {
             for (double y = 1; y < map[0].length - 1 - HEIGHT; y = roundIfClose(y + delta)) {
                 if (isStable(x, y)) {
