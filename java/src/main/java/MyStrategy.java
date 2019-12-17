@@ -69,6 +69,7 @@ public class MyStrategy {
         if (previousTick != game.getCurrentTick()) {
             think();
         }
+        //showBulletTrajectories();
         previousTick = game.getCurrentTick();
         return plannedMoves.get(me.getId());
     }
@@ -316,6 +317,16 @@ public class MyStrategy {
         showStates(bestStates, GREEN);
         lastMovementPlan.put(me.getId(), bestPlan);
         return new PlanAndStates(bestPlan, bestStates);
+    }
+
+    private void showBulletTrajectories() {
+        Bullet[] bullets = game.getBullets();
+        for (int i = 0; i < bullets.length; i++) {
+            Bullet bullet = bullets[i];
+            for (Point p : bulletTrajectories.get(i).positions) {
+                debug.drawSquare(p, bullet.getSize(), RED);
+            }
+        }
     }
 
     private double evaluate(Unit me, Point targetPos, Intention primaryIntention, int[][] dfsDist, List<UnitState> states) {
