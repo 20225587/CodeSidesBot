@@ -279,23 +279,50 @@ public class Simulator {
         return simulateBullet(
                 new Point(bullet.getPosition()),
                 new Point(bullet.getVelocity()),
+                bullet.getSize(),
                 ticks
         );
     }
 
-    public BulletTrajectory simulateBullet(Point start, Point speed, int maxTicks) {
+    public BulletTrajectory simulateBullet(Point start, Point speed, double size, int maxTicks) {
         Point curPos = start;
         Point tickSpeed = speed.mult(tickDuration);
+        Point microtickSpeed = speed.mult(microtickDuration);
         Point collisionPos = null;
         List<Point> r = new ArrayList<>();
         for (int i = 0; i < maxTicks; i++) {
-            curPos = curPos.add(tickSpeed);
-            if (tileAtPoint(map, curPos) == WALL) {
-                collisionPos = curPos;
+            Point newPos = curPos.add(tickSpeed);
+            if (bulletCollidesWithWall(map, newPos, size)) {
+                collisionPos = newPos;
                 break;
             }
-            r.add(curPos);
+            if (collidesWithWallMicroticks(curPos, newPos, size, microtickSpeed)) {
+                collisionPos = newPos; // wrong
+                break;
+            }
+            r.add(newPos);
+            curPos = newPos;
         }
         return new BulletTrajectory(r, collisionPos);
+    }
+
+    private boolean collidesWithWallMicroticks(Point curPos, Point newPos, double size, Point microtickSpeed) {
+        int curCx = (int) curPos.x;
+        int newCx = (int) newPos.x;
+        int curCy = (int) curPos.y;
+        int newCy = (int) newPos.y;
+        if (curCx == newCx || curCy == newCy) {
+            return false;
+        }
+        if (tileAtPoint(map, curCx, newCy) != WALL && tileAtPoint(map, newCx, curCy) != WALL) {
+            return false;
+        }
+        for (int i = 0; i < microticksPerTick; i++) {
+            curPos = curPos.add(microtickSpeed);
+            if (bulletCollidesWithWall(map, curPos, size)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

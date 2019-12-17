@@ -842,6 +842,7 @@ public class MyStrategy {
         List<Point> bulletPositions = simulator.simulateBullet(
                 start,
                 Point.dir(shootAngle).mult(speed),
+                bullet.getSize(),
                 10
         ).positions;
         for (Point bulletPosition : bulletPositions) {
@@ -898,7 +899,7 @@ public class MyStrategy {
         double speed = bullet.getSpeed();
         Point speedV = to.minus(from).norm().mult(speed);
         int ticksToReach = (int) ceil(dist(from, to) / (speed * simulator.tickDuration));
-        BulletTrajectory trajectory = simulator.simulateBullet(from, speedV, ticksToReach);
+        BulletTrajectory trajectory = simulator.simulateBullet(from, speedV, bullet.getSize(), ticksToReach);
         return trajectory.size() >= ticksToReach;
     }
 
