@@ -302,8 +302,7 @@ public class MyStrategy {
         int[][] dfsDist = dfs(targetPos);
         for (Plan plan : plans) {
             List<UnitState> states = simulator.simulate(start, plan);
-            double eval = evalDist(states, dfsDist, targetPos, primaryIntention);
-            eval += dangerFactor(me, states);
+            double eval = evaluate(me, targetPos, primaryIntention, dfsDist, states);
             if (eval < minEval) {
                 minEval = eval;
                 bestStates = states;
@@ -315,60 +314,33 @@ public class MyStrategy {
         return new PlanAndStates(bestPlan, bestStates);
     }
 
+    private double evaluate(Unit me, Point targetPos, Intention primaryIntention, int[][] dfsDist, List<UnitState> states) {
+        double eval = 0;
+        eval += 0.01 * evalDist(states, dfsDist, targetPos);
+        eval += dangerFactor(me, states);
+        if (collidesWithPrimaryOrEnemies(states, primaryIntention)) {
+            eval += 100;
+        }
+        return eval;
+    }
+
     private void showStates(List<UnitState> states, ColorFloat color) {
         for (UnitState state : states) {
             debug.drawSquare(state.position, 0.1, color);
         }
     }
 
-    private double evalDist(List<UnitState> states, int[][] dfsDist, Point target, Intention primaryIntention) {
+    private double evalDist(List<UnitState> states, int[][] dfsDist, Point target) {
         double r = Double.POSITIVE_INFINITY;
-        boolean collidesWithEnemy = false;
         for (int i = 0; i < states.size(); i++) {
             UnitState state = states.get(i);
-            double dist = evaluate(dfsDist, target, state) + i * simulator.tickSpeed * 0.1;
-            if (collidesWithEnemy(state)) {
-                collidesWithEnemy = true;
-            }
+            double dist = evalDist(dfsDist, target, state) + i * simulator.tickSpeed * 0.1;
             r = min(r, dist);
-        }
-        r /= 100; // todo приводить их к общей оценке в каком-то одном месте
-        final double collisionPenalty = 100;
-        if (collidesWithEnemy) {
-            r += collisionPenalty;
-        }
-        if (primaryIntention != null && collides(primaryIntention.states, states)) {
-            r += collisionPenalty;
         }
         return r;
     }
 
-    private boolean collides(List<UnitState> a, List<UnitState> b) {
-        for (int i = 0; i < a.size(); i++) {
-            if (unitsIntersect(a.get(i).position, b.get(i).position)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean collidesWithEnemy(UnitState state) {
-        Point a = state.position;
-        for (Unit enemy : enemies) {
-            Point b = new Point(enemy);
-            if (unitsIntersect(a, b)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean unitsIntersect(Point a, Point b) { // todo get rid of excessive object creation
-        return intersects(new Segment(a.x - WIDTH / 2, a.x + WIDTH / 2), new Segment(b.x - WIDTH / 2, b.x + WIDTH / 2)) &&
-                intersects(new Segment(a.y, a.y + HEIGHT), new Segment(b.y, b.y + HEIGHT));
-    }
-
-    private double evaluate(int[][] dfsDist, Point target, UnitState state) {
+    private double evalDist(int[][] dfsDist, Point target, UnitState state) {
         double minDist = Double.POSITIVE_INFINITY;
         double x = state.position.x;
         double y = state.position.y;
@@ -398,6 +370,30 @@ public class MyStrategy {
             }
         }
         return minDist;
+    }
+
+    private boolean collidesWithPrimaryOrEnemies(List<UnitState> states, Intention primaryIntention) {
+        if (primaryIntention != null) {
+            for (int i = 0; i < states.size(); i++) {
+                if (unitsIntersect(states.get(i).position, primaryIntention.states.get(i).position)) {
+                    return true;
+                }
+            }
+        }
+        for (Unit enemy : enemies) {
+            Point p = new Point(enemy);
+            for (UnitState state : states) {
+                if (unitsIntersect(state.position, p)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean unitsIntersect(Point a, Point b) { // todo get rid of excessive object creation
+        return intersects(new Segment(a.x - WIDTH / 2, a.x + WIDTH / 2), new Segment(b.x - WIDTH / 2, b.x + WIDTH / 2)) &&
+                intersects(new Segment(a.y, a.y + HEIGHT), new Segment(b.y, b.y + HEIGHT));
     }
 
     private void print(int[][] dfsDist) {
