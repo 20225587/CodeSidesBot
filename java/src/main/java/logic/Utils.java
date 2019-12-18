@@ -105,7 +105,7 @@ public class Utils {
         }
     }
 
-    public static ColorFloat color(double r, double g, int b, int a) {
+    public static ColorFloat color(double r, double g, double b, double a) {
         return new ColorFloat((float) r, (float) g, (float) b, (float) a);
     }
 }

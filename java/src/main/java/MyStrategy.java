@@ -151,7 +151,7 @@ public class MyStrategy {
         Vec2Double aimDir = aim(me, enemy);
         boolean shoot = shouldShoot(me, enemy);
 
-        boolean swap = me.getWeapon() != null && me.getWeapon().getTyp() == ROCKET_LAUNCHER;
+        boolean swap = targetBonus != null && targetBonus.getItem() instanceof Item.Weapon;
         boolean plantMine = false;
 
         MoveAction moveAction = ps.plan.get(0);
@@ -300,7 +300,7 @@ public class MyStrategy {
     private PlanAndStates move(Unit me, Point targetPos, Intention primaryIntention) {
         UnitState start = new UnitState(me);
         debug.drawLine(new Point(me), targetPos, WHITE);
-        Set<Plan> plans = genMovementPlans(me, targetPos);
+        Set<Plan> plans = genMovementPlans(me, targetPos, getPlanLength());
         double minEval = Double.POSITIVE_INFINITY;
         Plan bestPlan = null;
         List<UnitState> bestStates = null;
@@ -319,12 +319,13 @@ public class MyStrategy {
         return new PlanAndStates(bestPlan, bestStates);
     }
 
-    private void showBulletTrajectories() {
-        Bullet[] bullets = game.getBullets();
-        for (int i = 0; i < bullets.length; i++) {
-            Bullet bullet = bullets[i];
-            for (Point p : bulletTrajectories.get(i).positions) {
-                debug.drawSquare(p, bullet.getSize(), RED);
+    private void showBulletTrajectories(List<BulletTrajectory> trajectories) {
+        for (BulletTrajectory trajectory : trajectories) {
+            for (Point p : trajectory.positions) {
+                debug.drawSquare(p, trajectory.bulletSize, RED);
+            }
+            if (trajectory.collisionPos != null) {
+                debug.drawSquare(trajectory.collisionPos, EXPLOSION_SIZE, color(1, 0, 0, 0.1));
             }
         }
     }
@@ -471,10 +472,11 @@ public class MyStrategy {
         return x >= 0 && x < map.length && y >= 0 && y < map[0].length;
     }
 
-    private Set<Plan> genMovementPlans(Unit me, Point targetPos) {
-        int steps = getPlanLength();
+    private Set<Plan> genMovementPlans(Unit me, Point targetPos, int steps) {
         Set<Plan> plans = new LinkedHashSet<>();
-        addFollowUpPlans(plans, lastMovementPlan.get(me.getId()), steps);
+        if (myTeam.contains(me)) {
+            addFollowUpPlans(plans, lastMovementPlan.get(me.getId()), steps);
+        }
 
         double speedToTarget = simulator.clampSpeed(simulator.fromTickSpeed(targetPos.x - me.getPosition().getX()));
         plans.add(plan(1, speedToTarget, false, false).add(steps - 1, 0, false, false));
@@ -601,7 +603,7 @@ public class MyStrategy {
         if (me.getHealth() < HEALTHPACK_THRESHOLD) {
             return true;
         }
-        return iAmWinning(me);
+        return myTeam.size() == 1 && iAmWinning(me);
     }
 
     private boolean iAmWinning(Unit me) {
@@ -623,6 +625,9 @@ public class MyStrategy {
     private Point findShootingPosition(Unit me, Unit enemy, Intention primaryIntention) {
         Point enemyPos = new Point(enemy);
         if (game.getCurrentTick() > game.getProperties().getMaxTickCount() * 0.75 && !iAmWinning(me)) {
+            return enemyPos;
+        }
+        if (timeToShoot(me) == 0 && me.getWeapon().getTyp() == ROCKET_LAUNCHER) {
             return enemyPos;
         }
         /*if (!fake && timeToShoot(me) < timeToShoot(enemy) - 0.1) {
@@ -698,36 +703,62 @@ public class MyStrategy {
                 continue;
             }
             BulletTrajectory trajectory = bulletTrajectories.get(bulletIndex);
-            double minDist = Double.POSITIVE_INFINITY;
-
-            ExplosionParams explosion = bullet.getExplosionParams();
-            for (int i = 0; i < min(trajectory.size(), states.size()); i++) {
-                Point bulletPos = trajectory.get(i);
-                Point myPos = states.get(i).position;
-                double dist = distToBullet(myPos, bulletPos, bullet.getSize());
-                minDist = min(minDist, dist);
-                if (dist == 0) {
-                    break;
-                }
-            }
-
-            if (minDist > 0 &&
-                    trajectory.collisionPos != null &&
-                    explosion != null &&
-                    trajectory.size() < states.size()
-            ) {
-                Point myPos = states.get(trajectory.size()).position;
-                double distToExplosion = distToBullet(myPos, trajectory.collisionPos, explosion.getRadius() * 2);
-                danger += getDanger(minAllowedDist, distToExplosion, explosion.getDamage());
-            }
-
-            int collisionDamage = bullet.getDamage();
-            if (explosion != null) {
-                collisionDamage += explosion.getDamage();
-            }
-            danger += getDanger(minAllowedDist, minDist, collisionDamage);
+            danger += bulletDangerFactor(states, trajectory, new MyBulletParams(bullet), minAllowedDist);
         }
         danger += minesDangerFactor(states, minAllowedDist);
+        return danger;
+    }
+
+    static class MyBulletParams {
+        final double size;
+        final int damage;
+        final ExplosionParams explosion;
+
+        MyBulletParams(double size, int damage, ExplosionParams explosion) {
+            this.size = size;
+            this.damage = damage;
+            this.explosion = explosion;
+        }
+
+        MyBulletParams(BulletParams bullet, ExplosionParams explosion) {
+            this(bullet.getSize(), bullet.getDamage(), explosion);
+        }
+
+        MyBulletParams(Bullet bullet) {
+            this(bullet.getSize(), bullet.getDamage(), bullet.getExplosionParams());
+        }
+    }
+
+    private double bulletDangerFactor(List<UnitState> states, BulletTrajectory trajectory, MyBulletParams bullet, double minAllowedDist) {
+        double minDist = Double.POSITIVE_INFINITY;
+        double danger = 0;
+
+        ExplosionParams explosion = bullet.explosion;
+        for (int i = 0; i < min(trajectory.size(), states.size()); i++) {
+            Point bulletPos = trajectory.get(i);
+            Point myPos = states.get(i).position;
+            double dist = distToBullet(myPos, bulletPos, bullet.size);
+            minDist = min(minDist, dist);
+            if (dist == 0) {
+                break;
+            }
+        }
+
+        if (minDist > 0 &&
+                trajectory.collisionPos != null &&
+                explosion != null &&
+                trajectory.size() < states.size()
+        ) {
+            Point myPos = states.get(trajectory.size()).position;
+            double distToExplosion = distToBullet(myPos, trajectory.collisionPos, explosion.getRadius() * 2);
+            danger += getDanger(minAllowedDist, distToExplosion, explosion.getDamage());
+        }
+
+        int collisionDamage = bullet.damage;
+        if (explosion != null) {
+            collisionDamage += explosion.getDamage();
+        }
+        danger += getDanger(minAllowedDist, minDist, collisionDamage);
         return danger;
     }
 
@@ -817,9 +848,15 @@ public class MyStrategy {
     }
 
     private boolean shouldShoot(Unit me, Unit enemy) {
-        Weapon weapon = me.getWeapon();
-        if (weapon == null) {
+        if (timeToShoot(me) != 0) {
             return false;
+        }
+        Weapon weapon = me.getWeapon();
+        if (canShootTeammate(me)) {
+            return false;
+        }
+        if (!fake && weapon.getTyp() == ROCKET_LAUNCHER) {
+            return enemyCantDodge(me);
         }
         if (!inLineOfSight(me, enemy)) {
             return false;
@@ -827,11 +864,58 @@ public class MyStrategy {
         if (canExplodeMyselfWithBazooka(me)) {
             return false;
         }
-        if (canShootTeammate(me)) {
-            return false;
-        }
         return goodSpread(me, enemy, weapon);
     }
+
+    private boolean enemyCantDodge(Unit me) {
+        Weapon weapon = me.getWeapon();
+        BulletParams bullet = weapon.getParams().getBullet();
+        double angle = weapon.getLastAngle() == null ? 0 : weapon.getLastAngle();
+        double spread = weapon.getSpread();
+        int steps = 25;
+        List<BulletTrajectory> trajectories = Arrays.asList(
+                getTrajectory(me, angle + spread, steps),
+                getTrajectory(me, angle - spread, steps),
+                getTrajectory(me, angle, steps)
+        );
+        //showBulletTrajectories(trajectories);
+
+        for (Unit enemy : enemies) {
+            Set<Plan> plans = genMovementPlans(enemy, new Point(enemy), steps);
+            List<PlanAndStates> ps = plans.stream()
+                    .map(p -> new PlanAndStates(p, simulator.simulate(new UnitState(enemy), p)))
+                    .collect(Collectors.toList());
+            if (!canDodge(weapon, bullet, trajectories, ps)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean canDodge(Weapon weapon, BulletParams bullet, List<BulletTrajectory> trajectories, List<PlanAndStates> ps) {
+        for (BulletTrajectory trajectory : trajectories) {
+            boolean dodge = false;
+            for (PlanAndStates planAndStates : ps) {
+                List<UnitState> states = planAndStates.states;
+                double danger = bulletDangerFactor(states, trajectory, new MyBulletParams(bullet, weapon.getParams().getExplosion()), 0);
+                if (danger == 0) {
+                    dodge = true;
+                    break;
+                }
+            }
+            if (!dodge) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private BulletTrajectory getTrajectory(Unit me, double shootAngle, int steps) {
+        BulletParams bullet = me.getWeapon().getParams().getBullet();
+        Point speed = Point.dir(shootAngle).mult(bullet.getSpeed());
+        return simulator.simulateBullet(muzzlePoint(me), speed, bullet.getSize(), steps);
+    }
+
 
     private boolean canShootTeammate(Unit me) {
         Unit teammate = getTeammate(me);
@@ -955,11 +1039,11 @@ public class MyStrategy {
         List<LootBox> healthPacks = map.getOrDefault(Item.HealthPack.class, Collections.emptyList());
         List<LootBox> mines = map.getOrDefault(Item.Mine.class, Collections.emptyList());
 
-        if (me.getWeapon() == null || me.getWeapon().getTyp() == ROCKET_LAUNCHER) {
-            return chooseWeapon(me, weapons);
-        } else {
-            return chooseHealthPack(me, healthPacks, enemy);
+        LootBox weapon = chooseWeapon(me, weapons);
+        if (weapon != null) {
+            return weapon;
         }
+        return chooseHealthPack(me, healthPacks, enemy);
     }
 
     private boolean bonusTaken(LootBox b, Intention primaryIntention) {
@@ -986,12 +1070,25 @@ public class MyStrategy {
 
     private LootBox chooseWeapon(Unit me, List<LootBox> weapons) {
         return weapons.stream()
-                .filter(w -> getType(w) != ROCKET_LAUNCHER)
+                .filter(w -> betterWeapon(me, w))
                 .min(
                         Comparator.comparing((LootBox w) -> dangerousLootBox(me, w))
                                 .thenComparing(w -> dist(w.getPosition(), me.getPosition()))
                 )
                 .orElse(null);
+    }
+
+    private boolean betterWeapon(Unit me, LootBox w) {
+        if (me.getWeapon() == null) {
+            return true;
+        }
+        boolean weNeedBazooka = myTeam.stream()
+                .noneMatch(u -> u.getWeapon() != null && u.getWeapon().getTyp() == ROCKET_LAUNCHER);
+        return weNeedBazooka && getType(w) == ROCKET_LAUNCHER;
+    }
+
+    private WeaponType weaponType(LootBox w) {
+        return ((Item.Weapon) w.getItem()).getWeaponType();
     }
 
     private boolean dangerousLootBox(Unit me, LootBox w) {

@@ -303,7 +303,7 @@ public class Simulator {
             r.add(newPos);
             curPos = newPos;
         }
-        return new BulletTrajectory(r, collisionPos);
+        return new BulletTrajectory(r, collisionPos, size);
     }
 
     private boolean collidesWithWallMicroticks(Point curPos, Point newPos, double size, Point microtickSpeed) {
