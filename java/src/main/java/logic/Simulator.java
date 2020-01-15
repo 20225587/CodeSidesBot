@@ -38,14 +38,6 @@ public class Simulator {
         tickDuration = 1.0 / ticksPerSecond;
     }
 
-    public static Simulator real(Tile[][] map) {
-        return new Simulator(map, 60, 100);
-    }
-
-    public static Simulator forTesting(Tile[][] map) {
-        return new Simulator(map, 6000, 1);
-    }
-
     public List<UnitState> simulate(UnitState startState, Plan plan) {
         UnitState curState = startState;
         List<UnitState> r = new ArrayList<>();
@@ -67,7 +59,6 @@ public class Simulator {
                         newX = min(curState.position.x, (int) (newX - WIDTH / 2) + 1 + WIDTH / 2 + EPS);
                     }
                 }
-
 
                 boolean canMoveDown = !unitIsStandingOnWall(newX, newY);
                 boolean wasOnLadder = onLadder(curState.position.x, curState.position.y);
@@ -200,18 +191,6 @@ public class Simulator {
 
     private boolean sameInt(double a, double b, double delta) {
         return (int) (a + delta) == (int) (b + delta);
-    }
-
-    private boolean unitOnPlatform(double px, double py) {
-        return pointOnPlatform(px - WIDTH / 2, py)
-                || pointOnPlatform(px + WIDTH / 2, py);
-    }
-
-    private boolean pointOnPlatform(double px, double py) {
-        int x = (int) px;
-        int y = (int) py;
-        Tile below = map[x][y - 1];
-        return below == PLATFORM && abs(py - (int) py) < 1e-8;
     }
 
     private boolean platformOrLadderCollision(Tile[][] map, double newX, double newY, UnitState curState, MoveAction move) {
