@@ -132,22 +132,22 @@ public class MyStrategy {
     }
 
     private void think() {
-        Unit primary = getPrimary();
-        Intention primaryIntention = getIntention(primary, null);
-        plannedMoves.put(primary.getId(), primaryIntention.unitAction);
+        Unit leader = getLeader();
+        Intention leaderIntention = getIntention(leader, null);
+        plannedMoves.put(leader.getId(), leaderIntention.unitAction);
 
         if (myTeam.size() > 1) {
-            Unit secondary = getSecondary(primary);
-            Intention secondaryIntention = getIntention(secondary, primaryIntention);
+            Unit secondary = getSecondary(leader);
+            Intention secondaryIntention = getIntention(secondary, leaderIntention);
             plannedMoves.put(secondary.getId(), secondaryIntention.unitAction);
         }
     }
 
-    private Intention getIntention(Unit me, Intention primaryIntention) {
+    private Intention getIntention(Unit me, Intention leaderIntention) {
         Unit enemy = chooseEnemy(me);
-        LootBox targetBonus = chooseTargetBonus(me, enemy, primaryIntention);
-        Point targetPos = chooseTargetPosition(me, enemy, targetBonus, primaryIntention);
-        PlanAndStates ps = move(me, targetPos, primaryIntention);
+        LootBox targetBonus = chooseTargetBonus(me, enemy, leaderIntention);
+        Point targetPos = chooseTargetPosition(me, enemy, targetBonus, leaderIntention);
+        PlanAndStates ps = move(me, targetPos, leaderIntention);
         Vec2Double aimDir = aim(me, enemy);
         boolean shoot = shouldShoot(me, enemy);
 
@@ -195,7 +195,7 @@ public class MyStrategy {
         }
     }
 
-    private Unit getPrimary() {
+    private Unit getLeader() {
         double centerX = map.length / 2.0;
         return myTeam.stream()
                 .min(Comparator.comparing((Unit u) -> u.getWeapon() != null)
@@ -204,8 +204,8 @@ public class MyStrategy {
                 .get();
     }
 
-    private Unit getSecondary(Unit primary) {
-        return myTeam.stream().filter(u -> u.getId() != primary.getId()).findFirst().get();
+    private Unit getSecondary(Unit leader) {
+        return myTeam.stream().filter(u -> u.getId() != leader.getId()).findFirst().get();
     }
 
     private void initZeroTick() {
@@ -297,7 +297,7 @@ public class MyStrategy {
         return plan;
     }
 
-    private PlanAndStates move(Unit me, Point targetPos, Intention primaryIntention) {
+    private PlanAndStates move(Unit me, Point targetPos, Intention leaderIntention) {
         UnitState start = new UnitState(me);
         debug.drawLine(new Point(me), targetPos, WHITE);
         Set<Plan> plans = genMovementPlans(me, targetPos, getPlanLength());
@@ -307,7 +307,7 @@ public class MyStrategy {
         int[][] dfsDist = dfs(targetPos);
         for (Plan plan : plans) {
             List<UnitState> states = simulator.simulate(start, plan);
-            double eval = evaluate(me, targetPos, primaryIntention, dfsDist, states);
+            double eval = evaluate(me, targetPos, leaderIntention, dfsDist, states);
             if (eval < minEval) {
                 minEval = eval;
                 bestStates = states;
@@ -330,11 +330,11 @@ public class MyStrategy {
         }
     }
 
-    private double evaluate(Unit me, Point targetPos, Intention primaryIntention, int[][] dfsDist, List<UnitState> states) {
+    private double evaluate(Unit me, Point targetPos, Intention leaderIntention, int[][] dfsDist, List<UnitState> states) {
         double eval = 0;
         eval += 0.01 * evalDist(states, dfsDist, targetPos);
         eval += dangerFactor(me, states);
-        if (collidesWithPrimaryOrEnemies(states, primaryIntention)) {
+        if (collidesWithLeaderOrEnemies(states, leaderIntention)) {
             eval += 100;
         }
         return eval;
@@ -388,10 +388,10 @@ public class MyStrategy {
         return minDist;
     }
 
-    private boolean collidesWithPrimaryOrEnemies(List<UnitState> states, Intention primaryIntention) {
-        if (primaryIntention != null) {
+    private boolean collidesWithLeaderOrEnemies(List<UnitState> states, Intention leaderIntention) {
+        if (leaderIntention != null) {
             for (int i = 0; i < states.size(); i++) {
-                if (unitsIntersect(states.get(i).position, primaryIntention.states.get(i).position)) {
+                if (unitsIntersect(states.get(i).position, leaderIntention.states.get(i).position)) {
                     return true;
                 }
             }
@@ -548,7 +548,7 @@ public class MyStrategy {
     Random rnd = new Random(12);
     Point target;
 
-    private Point chooseTargetPosition(Unit me, Unit enemy, LootBox targetBonus, Intention primaryIntention) {
+    private Point chooseTargetPosition(Unit me, Unit enemy, LootBox targetBonus, Intention leaderIntention) {
         /*if (true) {
             if (!iAmFirst(me)) {
                 return new Point(map.length - 2, 1);
@@ -562,7 +562,7 @@ public class MyStrategy {
         } else if (targetBonus != null && targetBonus.getItem() instanceof Item.Weapon) {
             targetPos = new Point(targetBonus.getPosition());
         } else {
-            targetPos = findShootingPosition(me, enemy, primaryIntention);
+            targetPos = findShootingPosition(me, enemy, leaderIntention);
         }
         return targetPos;
     }
@@ -622,7 +622,7 @@ public class MyStrategy {
                 .findAny().get();
     }
 
-    private Point findShootingPosition(Unit me, Unit enemy, Intention primaryIntention) {
+    private Point findShootingPosition(Unit me, Unit enemy, Intention leaderIntention) {
         Point enemyPos = new Point(enemy);
         if (game.getCurrentTick() > game.getProperties().getMaxTickCount() * 0.75 && !iAmWinning(me)) {
             return enemyPos;
@@ -634,16 +634,16 @@ public class MyStrategy {
             debug.drawSquare(new Point(map.length / 2.0, map[0].length / 2.0), 2, RED);
             return enemyPos;
         }/**/
-        return getSafeShootingPosition(me, enemy, primaryIntention);
+        return getSafeShootingPosition(me, enemy, leaderIntention);
     }
 
-    private Point getSafeShootingPosition(Unit me, Unit enemy, Intention primaryIntention) {
+    private Point getSafeShootingPosition(Unit me, Unit enemy, Intention leaderIntention) {
         double maxDist = Double.NEGATIVE_INFINITY;
         Point bestPoint = null;
         double myX = me.getPosition().getX();
         double enemyX = enemy.getPosition().getX();
         for (Point p : stablePoints) {
-            if (primaryIntention != null && unitsIntersect(primaryIntention.targetPoint, p)) {
+            if (leaderIntention != null && unitsIntersect(leaderIntention.targetPoint, p)) {
                 continue;
             }
             Point muzzlePoint = new Point(p.x, p.y + HEIGHT / 2);
@@ -1031,9 +1031,9 @@ public class MyStrategy {
         );
     }
 
-    private LootBox chooseTargetBonus(Unit me, Unit enemy, Intention primaryIntention) {
+    private LootBox chooseTargetBonus(Unit me, Unit enemy, Intention leaderIntention) {
         Map<Class<? extends Item>, List<LootBox>> map = Stream.of(game.getLootBoxes())
-                .filter(b -> !bonusTaken(b, primaryIntention))
+                .filter(b -> !bonusTaken(b, leaderIntention))
                 .collect(Collectors.groupingBy(b -> b.getItem().getClass()));
         List<LootBox> weapons = map.getOrDefault(Item.Weapon.class, Collections.emptyList());
         List<LootBox> healthPacks = map.getOrDefault(Item.HealthPack.class, Collections.emptyList());
@@ -1046,14 +1046,14 @@ public class MyStrategy {
         return chooseHealthPack(me, healthPacks, enemy);
     }
 
-    private boolean bonusTaken(LootBox b, Intention primaryIntention) {
-        if (primaryIntention == null) {
+    private boolean bonusTaken(LootBox b, Intention leaderIntention) {
+        if (leaderIntention == null) {
             return false;
         }
-        if (primaryIntention.targetBonus == null) {
+        if (leaderIntention.targetBonus == null) {
             return false;
         }
-        return dist(b.getPosition(), primaryIntention.targetBonus.getPosition()) < 1e-9;
+        return dist(b.getPosition(), leaderIntention.targetBonus.getPosition()) < 1e-9;
     }
 
     private LootBox chooseHealthPack(Unit me, List<LootBox> healthPacks, Unit enemy) {
